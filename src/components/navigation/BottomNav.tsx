@@ -3,8 +3,20 @@ import { IoGridOutline, IoGrid } from 'react-icons/io5'
 import { IoSettingsOutline, IoSettings } from 'react-icons/io5'
 import { IoPersonOutline, IoPerson } from 'react-icons/io5'
 
-const navItems = [
-  { to: '/app/home', label: 'پنل\u200cها', Icon: IoGridOutline, IconActive: IoGrid },
+const navItems: Array<{
+  to: string
+  label: string
+  Icon: typeof IoGridOutline
+  IconActive: typeof IoGrid
+  isActive?: (match: { pathname: string } | null, location: { pathname: string }) => boolean
+}> = [
+  {
+    to: '/app/home',
+    label: 'پنل\u200cها',
+    Icon: IoGridOutline,
+    IconActive: IoGrid,
+    isActive: (match, location) => !!match || location.pathname.startsWith('/app/panel/'),
+  },
   { to: '/app/settings', label: 'تنظیمات', Icon: IoSettingsOutline, IconActive: IoSettings },
   { to: '/app/profile', label: 'پروفایل', Icon: IoPersonOutline, IconActive: IoPerson },
 ]
@@ -20,6 +32,7 @@ export function BottomNav() {
           <NavLink
             key={item.to}
             to={item.to}
+            isActive={item.isActive}
             className={({ isActive }) =>
               `flex flex-col items-center justify-center gap-1 rounded-3xl px-6 py-2 text-center text-xs font-medium transition ${
                 isActive
