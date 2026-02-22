@@ -4,8 +4,17 @@ import { router } from './app/router'
 function App() {
   return (
     <div className="w-full h-full">
-      <div className="md:hidden w-full h-full">
-        <RouterProvider router={router} />
+      <div className="relative h-full w-full overflow-hidden bg-white md:hidden">
+        {/* <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+          <div className="iphone-bg-element iphone-bg-cyan-1" />
+          <div className="iphone-bg-element iphone-bg-cyan-2" />
+          <div className="iphone-bg-element iphone-bg-blue-1" />
+          <div className="iphone-bg-element iphone-bg-blue-2" />
+        </div> */}
+
+        <div className="relative z-10 h-full w-full">
+          <RouterProvider router={router} />
+        </div>
       </div>
 
       <div className="hidden min-h-dvh flex-col items-center justify-center bg-(--background-light) bg-linear-to-b from-(--app-gradient-start) to-(--app-gradient-end) px-6 text-center text-(--black) md:flex">

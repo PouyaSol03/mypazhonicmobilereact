@@ -1,12 +1,22 @@
 import type { FC } from 'react'
 
-const PazhLogoTypo: FC = () => {
+interface PazhLogoTypoProps {
+  width?: number | string;
+  height?: number | string;
+  className?: string;
+}
+
+const PazhLogoTypo: FC<PazhLogoTypoProps> = ({
+  width = 55,
+  height = 75,
+  className,
+}) => {
   return (
     <>
       <svg
         xmlns="http://www.w3.org/2000/svg"
-        width="105"
-        height="41"
+        width={width}
+        height={height}
         viewBox="0 0 105 41"
         fill="none"
       >

@@ -18,7 +18,7 @@
   --app-border-unfocused: #e6e6ee;
   --white: #ffffff;
   --black: #000000;
-  --background-light: #ffffff;
+  --background-light: #EDF7F8;
   --surface-light: #ffffff;
   --background-dark: #121212;
   --surface-dark: #1e1e1e;
@@ -33,27 +33,76 @@
 }
 
 * {
-  margin: 0;
-  padding: 0;
+  /* margin: 0; */
+  /* padding: 0; */
   box-sizing: border-box;
+}
+
+#root, html, body{
+  width: 100vw;
+  height: 100vh;
 }
 
 body {
   margin: 0;
-  min-width: 320px;
+  width: 100vw;
+  height: 100vh;
   background-color: var(--background-light);
   color: var(--black);
   direction: rtl;
   font-family: "Vazirmatn", Inter, system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  body {
-    background-color: var(--background-dark);
-    color: var(--white);
-  }
+.iphone-bg-element {
+  position: absolute;
+  filter: blur(100px);
 }
 
-#root, html, body{
-  height: 100vh;
+.iphone-bg-cyan-1 {
+  top: -743px;
+  left: -434px;
+  width: 1258px;
+  height: 1258px;
+  background-color: #27bdbe;
+  border-radius: 629px;
+  opacity: 0.6;
+}
+
+.iphone-bg-cyan-2 {
+  top: 408px;
+  left: -434px;
+  width: 1258px;
+  height: 1258px;
+  background-color: #27bdbe;
+  border-radius: 629px;
+  opacity: 0.6;
+}
+
+.iphone-bg-blue-1 {
+  top: -1091px;
+  left: -349px;
+  width: 1088px;
+  height: 1088px;
+  background-color: #003c78;
+  border-radius: 544px;
+  opacity: 0.9;
+}
+
+.iphone-bg-blue-2 {
+  top: -292px;
+  left: 104px;
+  width: 265px;
+  height: 579px;
+  background-color: #003c78;
+  border-radius: 132.5px;
+  opacity: 0.9;
+  transform: rotate(36.86deg);
+}
+
+.bottom-nav-fade {
+  background: linear-gradient(
+    to top,
+    var(--background-light) 0%,
+    transparent 100%
+  );
 }
