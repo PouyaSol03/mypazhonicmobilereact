@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("./assets/fonts/Vazirmatn-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --teal-primary: #09a1a4;
+  --app-primary: #17a2a6;
+  --app-gradient-start: #eff6f9;
+  --app-gradient-end: #ddeff3;
+  --app-divider: #e0e0e0;
+  --app-border: #e0e0ea;
+  --app-border-unfocused: #e6e6ee;
+  --white: #ffffff;
+  --black: #000000;
+  --background-light: #ffffff;
+  --surface-light: #ffffff;
+  --background-dark: #121212;
+  --surface-dark: #1e1e1e;
+  --teal-secondary: #40c0c2;
+  --teal-tertiary: #007e81;
+
+  font-family: "Vazirmatn", Inter, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background-color: var(--background-light);
+  color: var(--black);
+  direction: rtl;
+  font-family: "Vazirmatn", Inter, system-ui, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: var(--background-dark);
+    color: var(--white);
+  }
+}
+
+#root, html, body{
+  height: 100vh;
+}
