@@ -51,11 +51,10 @@ const MOCK_PANELS: Panel[] = [
 function PanelAvatar({ status }: { status: PanelStatus }) {
   return (
     <div
-      className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full border shadow-sm transition-all duration-200 ${
-        status === 'online'
-          ? 'border-green-500/35 bg-green-500/10 text-green-700'
-          : 'border-red-500/35 bg-red-500/10 text-red-700'
-      }`}
+      className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full border shadow-sm transition-all duration-200 ${status === 'online'
+        ? 'border-green-500/35 bg-green-500/10 text-green-700'
+        : 'border-red-500/35 bg-red-500/10 text-red-700'
+        }`}
       aria-hidden
     >
       <span className="text-lg font-semibold">
@@ -136,8 +135,19 @@ const PanelListPage = () => {
           </div>
         </div>
       </motion.div>
-      <div className="sticky top-0 z-20 mb-1 w-full px-3 pb-1">
-        <div className="no-scrollbar flex w-full items-center gap-1 overflow-x-auto rounded-2xl border border-(--teal-primary)/30 px-1 py-1 shadow-sm bg-(--background-light)">
+      <div
+        className={`sticky top-0 z-20 w-full px-3 pb-1 transition-[padding] duration-200 ${!showSearch ? 'pt-2' : ''
+          }`}
+      >
+        {!showSearch && (
+          <>
+            <div
+              className="category-bar-fade pointer-events-none absolute inset-x-0 bottom-5 z-10 h-8"
+              aria-hidden
+            />
+          </>
+        )}
+        <div className="relative z-10 no-scrollbar flex w-full items-center gap-1 overflow-x-auto rounded-2xl border border-(--teal-primary)/30 px-1 py-1 shadow-sm bg-(--background-light)">
           {CATEGORIES.map((category) => {
             const isActive = category === activeCategory
             return (
@@ -145,11 +155,10 @@ const PanelListPage = () => {
                 key={category}
                 type="button"
                 onClick={() => setActiveCategory(category)}
-                className={`w-full rounded-full border px-3 py-1 text-xs font-medium transition-all duration-200 text-nowrap ${
-                  isActive
-                    ? 'border-(--teal-primary)/40 bg-(--teal-primary) text-black shadow-sm'
-                    : 'border-(--teal-tertiary)/80 bg-(--teal-tertiary)/30 text-black hover:border-(--teal-primary)/25 hover:bg-(--app-gradient-start)/40'
-                }`}
+                className={`w-full rounded-full border px-3 py-1 text-xs font-medium transition-all duration-200 text-nowrap ${isActive
+                  ? 'border-(--teal-primary)/40 bg-(--teal-primary) text-black shadow-sm'
+                  : 'border-(--teal-tertiary)/80 bg-(--teal-tertiary)/30 text-black hover:border-(--teal-primary)/25 hover:bg-(--app-gradient-start)/40'
+                  }`}
               >
                 {category}
               </button>
@@ -208,13 +217,12 @@ const PanelListPage = () => {
               onSwipeEnd={() => setSwipingPanelId(null)}
             >
               <div
-                className={`group flex w-full items-center gap-3 border-r-4 px-2 py-3 text-right transition-all duration-300 ease-out hover:bg-(--app-gradient-start)/45  ${
-                  swipingPanelId === panel.id
-                    ? 'border-r-transparent'
-                    : panel.status === 'online'
-                      ? 'border-r-green-600'
-                      : 'border-r-red-600'
-                }`}
+                className={`group flex w-full items-center gap-3 border-r-4 px-2 py-3 text-right transition-all duration-300 ease-out hover:bg-(--app-gradient-start)/45  ${swipingPanelId === panel.id
+                  ? 'border-r-transparent'
+                  : panel.status === 'online'
+                    ? 'border-r-green-600'
+                    : 'border-r-red-600'
+                  }`}
               >
                 <PanelAvatar status={panel.status} />
                 <div className="min-w-0 flex-1">

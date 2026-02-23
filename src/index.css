@@ -107,6 +107,15 @@ body {
   );
 }
 
+/* Fade for content scrolling under the sticky category bar on panel list */
+.category-bar-fade {
+  background: linear-gradient(
+    to bottom,
+    var(--background-light) 0%,
+    transparent 100%
+  );
+}
+
 /* react-swipeable-list: allow parent to scroll, don't force height */
 .swipeable-list {
   height: auto;

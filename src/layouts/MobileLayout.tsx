@@ -20,7 +20,11 @@ function MobileLayoutContent() {
 
   return (
     <div className="flex w-full h-full max-w-md flex-col bg-(--background-light) text-(--black)">
-      <header className="flex items-center justify-between px-3 py-4">
+      <header
+        className={`flex items-center justify-between px-3 py-4 transition-shadow duration-200 ${
+          headerSearch?.showHeaderSearch ? 'border-b border-(--app-border)/70 shadow-sm bg-(--background-light)' : ''
+        }`}
+      >
         <div className="flex items-center gap-2">
           <div className="flex items-center justify-center rounded-full border-2 border-(--teal-primary) bg-(--white) p-1">
             <PazhLogo className="h-8 w-8" />
@@ -165,7 +169,7 @@ function MobileLayoutContent() {
               className="flex w-8 h-8 shrink-0 items-center justify-center rounded-full text-(--teal-tertiary) transition hover:bg-(--app-gradient-start)"
               aria-label="جستجو"
             >
-              <IoSearchOutline className="w-5 h-5" />
+              <IoSearchOutline className="w-6 h-6" />
             </button>
           )}
           <button
