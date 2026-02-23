@@ -69,7 +69,7 @@ export function PanelDetailSheet({
             role="dialog"
             aria-modal="true"
             aria-labelledby="panel-detail-title"
-            className="fixed inset-x-0 bottom-0 z-40 flex max-h-[85vh] flex-col rounded-t-3xl border-t border-(--app-border) bg-(--surface-light) shadow-2xl"
+            className="fixed inset-x-0 bottom-0 z-40 flex max-h-[90vh] flex-col rounded-t-3xl border-t border-(--app-border) bg-(--surface-light) shadow-2xl"
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
