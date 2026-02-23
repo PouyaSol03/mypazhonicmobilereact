@@ -106,3 +106,10 @@ body {
     transparent 100%
   );
 }
+
+/* react-swipeable-list: allow parent to scroll, don't force height */
+.swipeable-list {
+  height: auto;
+  min-height: 0;
+  overflow-y: visible;
+}

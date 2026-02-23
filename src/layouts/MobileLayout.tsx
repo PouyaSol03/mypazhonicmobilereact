@@ -1,9 +1,23 @@
+import { useEffect, useRef } from 'react'
 import { Outlet } from 'react-router-dom'
-import { IoEllipsisVertical } from 'react-icons/io5'
+import { IoEllipsisVertical, IoSearchOutline } from 'react-icons/io5'
 import { BottomNav } from '../components/navigation/BottomNav'
 import PazhLogo from '../assets/logos/PazhLogo'
+import { HeaderSearchProvider, useHeaderSearch } from '../contexts/HeaderSearchContext'
 
-export function MobileLayout() {
+function MobileLayoutContent() {
+  const headerSearch = useHeaderSearch()
+  const mainRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    if (headerSearch) {
+      headerSearch.scrollToTopRef.current = () => mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+      return () => {
+        headerSearch.scrollToTopRef.current = null
+      }
+    }
+  }, [headerSearch])
+
   return (
     <div className="flex w-full h-full max-w-md flex-col bg-(--background-light) text-(--black)">
       <header className="flex items-center justify-between px-3 py-4">
@@ -143,16 +157,28 @@ export function MobileLayout() {
             </defs>
           </svg>
         </div>
-        <button
-          type="button"
-          className="flex w-8 h-8 shrink-0 items-center justify-center rounded-full text-(--teal-tertiary) transition hover:bg-(--app-gradient-start)"
-          aria-label="منو"
-        >
-          <IoEllipsisVertical className="w-6 h-6" />
-        </button>
+        <div className="flex items-center gap-1">
+          {headerSearch?.showHeaderSearch && (
+            <button
+              type="button"
+              onClick={headerSearch.onHeaderSearchClick}
+              className="flex w-8 h-8 shrink-0 items-center justify-center rounded-full text-(--teal-tertiary) transition hover:bg-(--app-gradient-start)"
+              aria-label="جستجو"
+            >
+              <IoSearchOutline className="w-5 h-5" />
+            </button>
+          )}
+          <button
+            type="button"
+            className="flex w-8 h-8 shrink-0 items-center justify-center rounded-full text-(--teal-tertiary) transition hover:bg-(--app-gradient-start)"
+            aria-label="منو"
+          >
+            <IoEllipsisVertical className="w-6 h-6" />
+          </button>
+        </div>
       </header>
 
-      <main className="flex-1 min-h-0 overflow-auto pb-24">
+      <main ref={mainRef} className="flex-1 min-h-0 overflow-auto pb-24">
         <Outlet />
       </main>
 
@@ -163,5 +189,13 @@ export function MobileLayout() {
 
       <BottomNav />
     </div>
+  )
+}
+
+export function MobileLayout() {
+  return (
+    <HeaderSearchProvider>
+      <MobileLayoutContent />
+    </HeaderSearchProvider>
   )
 }

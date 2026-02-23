@@ -1,12 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { IoSearchOutline } from 'react-icons/io5'
+import { IoSearchOutline, IoPencilOutline, IoTrashOutline } from 'react-icons/io5'
 import { toPersianDigits } from '../../utils/digits'
 import { FaBuilding } from 'react-icons/fa'
+import {
+  SwipeableList,
+  SwipeableListItem,
+  SwipeAction,
+  TrailingActions,
+  Type,
+} from 'react-swipeable-list'
+import 'react-swipeable-list/dist/styles.css'
 import { FloatingCreatePanelButton } from '../../components/FloatingCreatePanelButton'
 import { CreatePanelSheet } from '../../components/CreatePanelSheet'
 import { PanelDetailSheet, type PanelDetail } from '../../components/PanelDetailSheet'
+import { useHeaderSearch } from '../../contexts/HeaderSearchContext'
 
 const SCROLL_HIDE = 56
 const SCROLL_SHOW = 16
@@ -58,14 +67,26 @@ function PanelAvatar({ status }: { status: PanelStatus }) {
 
 const PanelListPage = () => {
   const navigate = useNavigate()
+  const headerSearch = useHeaderSearch()
   const [showSearch, setShowSearch] = useState(true)
   const [activeCategory, setActiveCategory] = useState<(typeof CATEGORIES)[number]>('همه')
   const [createSheetOpen, setCreateSheetOpen] = useState(false)
   const [detailPanel, setDetailPanel] = useState<PanelDetail | null>(null)
   const [detailSheetOpen, setDetailSheetOpen] = useState(false)
+  const [panels, setPanels] = useState<Panel[]>(() => [...MOCK_PANELS])
+  const [swipingPanelId, setSwipingPanelId] = useState<string | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const rafRef = useRef<number | null>(null)
   const lastShowRef = useRef(true)
+
+  useEffect(() => {
+    if (!headerSearch) return
+    headerSearch.setHeaderSearch(!showSearch, () => setShowSearch(true))
+  }, [showSearch, headerSearch])
+
+  useEffect(() => {
+    return () => headerSearch?.setHeaderSearch(false)
+  }, [headerSearch])
 
   useEffect(() => {
     const scrollEl = rootRef.current?.parentElement
@@ -115,8 +136,8 @@ const PanelListPage = () => {
           </div>
         </div>
       </motion.div>
-      <div className="sticky top-0 z-20 mb-1 w-full px-3 pb-1 backdrop-blur-[1px]">
-        <div className="no-scrollbar flex w-full items-center gap-1 overflow-x-auto py-1 bg-(--teal-tertiary)/30 rounded-2xl px-1">
+      <div className="sticky top-0 z-20 mb-1 w-full px-3 pb-1">
+        <div className="no-scrollbar flex w-full items-center gap-1 overflow-x-auto rounded-2xl border border-(--teal-primary)/30 px-1 py-1 shadow-sm bg-(--background-light)">
           {CATEGORIES.map((category) => {
             const isActive = category === activeCategory
             return (
@@ -124,10 +145,10 @@ const PanelListPage = () => {
                 key={category}
                 type="button"
                 onClick={() => setActiveCategory(category)}
-                className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-all duration-200 ${
+                className={`w-full rounded-full border px-3 py-1 text-xs font-medium transition-all duration-200 text-nowrap ${
                   isActive
-                    ? 'border-(--teal-primary)/40 bg-(--teal-primary) text-white shadow-sm'
-                    : 'border-(--teal-tertiary)/80 bg-(--teal-tertiary)/30 text-white hover:border-(--teal-primary)/25 hover:bg-(--app-gradient-start)/40'
+                    ? 'border-(--teal-primary)/40 bg-(--teal-primary) text-black shadow-sm'
+                    : 'border-(--teal-tertiary)/80 bg-(--teal-tertiary)/30 text-black hover:border-(--teal-primary)/25 hover:bg-(--app-gradient-start)/40'
                 }`}
               >
                 {category}
@@ -136,38 +157,85 @@ const PanelListPage = () => {
           })}
         </div>
       </div>
-      <ul className="divide-y divide-(--app-border)/70 px-1.5">
-        {MOCK_PANELS.map((panel) => (
-          <li key={panel.id}>
-            <button
-              type="button"
+      <div className="px-1.5">
+        <SwipeableList
+          type={Type.IOS}
+          fullSwipe={false}
+          threshold={0.25}
+          scrollStartThreshold={15}
+          swipeStartThreshold={5}
+          className="divide-y divide-(--app-border)/70"
+        >
+          {panels.map((panel) => (
+            <SwipeableListItem
+              key={panel.id}
+              threshold={0.25}
+              scrollStartThreshold={15}
+              swipeStartThreshold={5}
+              trailingActions={(() => (
+                <TrailingActions>
+                  <SwipeAction
+                    onClick={() => {
+                      setDetailPanel(panel as PanelDetail)
+                      setDetailSheetOpen(true)
+                    }}
+                  >
+                    <span className="flex h-full w-full min-w-18 items-center justify-center gap-1.5 bg-(--teal-primary) px-4 py-2 text-white">
+                      <IoPencilOutline className="h-5 w-5 shrink-0" />
+                      <span className="text-xs font-medium">ویرایش</span>
+                    </span>
+                  </SwipeAction>
+                  <SwipeAction
+                    destructive
+                    onClick={() => {
+                      if (window.confirm(`حذف پنل «${panel.name}»؟`)) {
+                        setPanels((prev) => prev.filter((p) => p.id !== panel.id))
+                      }
+                    }}
+                  >
+                    <span className="flex h-full w-full min-w-18 items-center justify-center gap-1.5 bg-red-500 px-4 py-2 text-white">
+                      <IoTrashOutline className="h-5 w-5" />
+                      <span className="text-xs font-medium">حذف</span>
+                    </span>
+                  </SwipeAction>
+                </TrailingActions>
+              ))()}
               onClick={() => {
                 setDetailPanel(panel as PanelDetail)
                 setDetailSheetOpen(true)
               }}
-              className={`group flex w-full items-center gap-3 border-r-4 px-2 py-3 text-right transition-all duration-300 ease-out hover:bg-(--app-gradient-start)/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--teal-primary)/35 ${
-                panel.status === 'online' ? 'border-r-green-600' : 'border-r-red-600'
-              }`}
+              onSwipeStart={() => setSwipingPanelId(panel.id)}
+              onSwipeEnd={() => setSwipingPanelId(null)}
             >
-              <PanelAvatar status={panel.status} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold tracking-tight text-(--black)">{panel.name}</p>
-                <p className="mt-0.5 truncate text-xs text-(--teal-tertiary)/90">
-                  {panel.ip} · {toPersianDigits(panel.phone)}
-                </p>
+              <div
+                className={`group flex w-full items-center gap-3 border-r-4 px-2 py-3 text-right transition-all duration-300 ease-out hover:bg-(--app-gradient-start)/45  ${
+                  swipingPanelId === panel.id
+                    ? 'border-r-transparent'
+                    : panel.status === 'online'
+                      ? 'border-r-green-600'
+                      : 'border-r-red-600'
+                }`}
+              >
+                <PanelAvatar status={panel.status} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold tracking-tight text-(--black)">{panel.name}</p>
+                  <p className="mt-0.5 truncate text-xs text-(--teal-tertiary)/90">
+                    {panel.ip} · {toPersianDigits(panel.phone)}
+                  </p>
+                </div>
+                {panel.unreadCount != null && panel.unreadCount > 0 ? (
+                  <span
+                    className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-(--teal-primary) px-1.5 text-xs font-semibold leading-none text-white shadow-sm transition-transform duration-200 group-hover:scale-105"
+                    aria-label={`${toPersianDigits(panel.unreadCount)} اعلان خوانده نشده`}
+                  >
+                    {panel.unreadCount > 99 ? '99+' : toPersianDigits(panel.unreadCount)}
+                  </span>
+                ) : null}
               </div>
-              {panel.unreadCount != null && panel.unreadCount > 0 ? (
-                <span
-                  className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-(--teal-primary) px-1.5 text-xs font-semibold leading-none text-white shadow-sm transition-transform duration-200 group-hover:scale-105"
-                  aria-label={`${toPersianDigits(panel.unreadCount)} اعلان خوانده نشده`}
-                >
-                  {panel.unreadCount > 99 ? '99+' : toPersianDigits(panel.unreadCount)}
-                </span>
-              ) : null}
-            </button>
-          </li>
-        ))}
-      </ul>
+            </SwipeableListItem>
+          ))}
+        </SwipeableList>
+      </div>
       <FloatingCreatePanelButton onClick={() => setCreateSheetOpen(true)} />
       <CreatePanelSheet
         open={createSheetOpen}
@@ -189,7 +257,11 @@ const PanelListPage = () => {
           setDetailPanel(null)
         }}
         onEdit={(p) => console.log('Edit panel:', p)}
-        onDelete={(p) => console.log('Delete panel:', p)}
+        onDelete={(p) => {
+          setPanels((prev) => prev.filter((item) => item.id !== p.id))
+          setDetailSheetOpen(false)
+          setDetailPanel(null)
+        }}
       />
     </div>
   )
