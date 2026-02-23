@@ -30,22 +30,24 @@ interface Panel {
   phone: string
   status: PanelStatus
   unreadCount?: number
+  /** آخرین رویداد — only shown when panel has badge (unreadCount) */
+  lastEvent?: string
 }
 
 const MOCK_PANELS: Panel[] = [
-  { id: '1', name: 'پنل فروشگاه مرکزی', ip: '192.168.1.101', phone: '09121234567', status: 'online', unreadCount: 3 },
-  { id: '2', name: 'پنل انبار شمال', ip: '192.168.1.102', phone: '09129876543', status: 'offline', unreadCount: 12 },
+  { id: '1', name: 'پنل فروشگاه مرکزی', ip: '192.168.1.101', phone: '09121234567', status: 'online', unreadCount: 3, lastEvent: 'ورود غیر مجاز' },
+  { id: '2', name: 'پنل انبار شمال', ip: '192.168.1.102', phone: '09129876543', status: 'offline', unreadCount: 12, lastEvent: 'هشدار دما' },
   { id: '3', name: 'پنل شعبه یک', ip: '192.168.1.103', phone: '09131112222', status: 'online' },
-  { id: '4', name: 'پنل شعبه دو', ip: '192.168.1.104', phone: '09133334444', status: 'online', unreadCount: 1 },
-  { id: '6', name: 'پنل اداری', ip: '192.168.1.105', phone: '09125556666', status: 'offline', unreadCount: 99 },
+  { id: '4', name: 'پنل شعبه دو', ip: '192.168.1.104', phone: '09133334444', status: 'online', unreadCount: 1, lastEvent: 'ورود غیر مجاز' },
+  { id: '6', name: 'پنل اداری', ip: '192.168.1.105', phone: '09125556666', status: 'offline', unreadCount: 99, lastEvent: 'قطع اتصال' },
   { id: '7', name: 'پنل اداری', ip: '192.168.1.105', phone: '09125556666', status: 'online' },
-  { id: '8', name: 'پنل اداری', ip: '192.168.1.105', phone: '09125556666', status: 'offline', unreadCount: 5 },
-  { id: '9', name: 'پنل اداری', ip: '192.168.1.105', phone: '09125556666', status: 'online', unreadCount: 2 },
+  { id: '8', name: 'پنل اداری', ip: '192.168.1.105', phone: '09125556666', status: 'offline', unreadCount: 5, lastEvent: 'ورود غیر مجاز' },
+  { id: '9', name: 'پنل اداری', ip: '192.168.1.105', phone: '09125556666', status: 'online', unreadCount: 2, lastEvent: 'تغییر رمز' },
   { id: '10', name: 'پنل اداری', ip: '192.168.1.105', phone: '09125556666', status: 'offline' },
-  { id: '11', name: 'پنل اداری', ip: '192.168.1.105', phone: '09125556666', status: 'online', unreadCount: 1 },
+  { id: '11', name: 'پنل اداری', ip: '192.168.1.105', phone: '09125556666', status: 'online', unreadCount: 1, lastEvent: 'ورود غیر مجاز' },
   { id: '12', name: 'پنل اداری', ip: '192.168.1.105', phone: '09125556666', status: 'online' },
   { id: '13', name: 'پنل اداری', ip: '192.168.1.105', phone: '09125556666', status: 'offline' },
-  { id: '14', name: 'پنل اداری', ip: '192.168.1.105', phone: '09125556666', status: 'online', unreadCount: 7 },
+  { id: '14', name: 'پنل اداری', ip: '192.168.1.105', phone: '09125556666', status: 'online', unreadCount: 7, lastEvent: 'ورود غیر مجاز' },
 ]
 
 function PanelAvatar({ status }: { status: PanelStatus }) {
@@ -228,7 +230,9 @@ const PanelListPage = () => {
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold tracking-tight text-(--black)">{panel.name}</p>
                   <p className="mt-0.5 truncate text-xs text-(--teal-tertiary)/90">
-                    {panel.ip} · {toPersianDigits(panel.phone)}
+                    {panel.unreadCount != null && panel.unreadCount > 0
+                      ? `آخرین رویداد: ${panel.lastEvent ?? 'ورود غیر مجاز'}`
+                      : toPersianDigits(panel.phone)}
                   </p>
                 </div>
                 {panel.unreadCount != null && panel.unreadCount > 0 ? (

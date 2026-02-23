@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  IoClose,
   IoPauseOutline,
   IoVolumeHighOutline,
   IoEllipsisHorizontal,
@@ -127,6 +126,9 @@ export function StoryScreen({ open, onClose }: StoryScreenProps) {
                 type="text"
                 value={reply}
                 onChange={(e) => setReply(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSend()
+                }}
                 placeholder="پاسخ به استوری..."
                 className="flex-1 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-sm text-white placeholder:text-white/50 outline-none focus:border-white/40"
                 dir="rtl"

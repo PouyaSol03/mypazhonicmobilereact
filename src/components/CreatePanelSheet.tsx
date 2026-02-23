@@ -8,6 +8,7 @@ import {
   IoLocationOutline,
   IoKeyOutline,
 } from 'react-icons/io5'
+import { FaBuilding, FaHome, FaStore, FaWarehouse, FaIndustry } from 'react-icons/fa'
 import { FormInput } from './ui/FormInput'
 import { FormButton } from './ui/FormButton'
 import { FormSearchSelect, type SearchSelectOption } from './ui/FormSearchSelect'
@@ -33,6 +34,14 @@ const PROVINCE_OPTIONS: SearchSelectOption[] = [
   { value: 'qazvin', label: 'قزوین' },
   { value: 'zanjan', label: 'زنجان' },
   { value: 'ardebil', label: 'اردبیل' },
+]
+
+const AVATAR_ICONS: { value: string; label: string; Icon: React.ComponentType<{ className?: string }> }[] = [
+  { value: 'building', label: 'ساختمان', Icon: FaBuilding },
+  { value: 'home', label: 'خانه', Icon: FaHome },
+  { value: 'store', label: 'فروشگاه', Icon: FaStore },
+  { value: 'warehouse', label: 'انبار', Icon: FaWarehouse },
+  { value: 'industry', label: 'صنعت', Icon: FaIndustry },
 ]
 
 const CITY_OPTIONS: SearchSelectOption[] = [
@@ -71,6 +80,7 @@ export interface CreatePanelFormData {
   province: string
   city: string
   udlCode: string
+  avatar: string
 }
 
 const initialForm: CreatePanelFormData = {
@@ -80,6 +90,7 @@ const initialForm: CreatePanelFormData = {
   province: '',
   city: '',
   udlCode: '',
+  avatar: AVATAR_ICONS[0].value,
 }
 
 export function CreatePanelSheet({ open, onClose, onSubmit }: CreatePanelSheetProps) {
@@ -150,6 +161,30 @@ export function CreatePanelSheet({ open, onClose, onSubmit }: CreatePanelSheetPr
               onSubmit={handleSubmit}
               className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-8 pt-2"
             >
+              {/* انتخاب آیکون پنل */}
+              <div className="w-full">
+                <label className="mb-2 block text-sm text-(--teal-tertiary)">
+                  آیکون پنل
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {AVATAR_ICONS.map(({ value, label, Icon }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setForm((prev) => ({ ...prev, avatar: value }))}
+                      title={label}
+                      className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 transition ${
+                        form.avatar === value
+                          ? 'border-(--teal-primary) bg-(--teal-primary)/10 text-(--teal-primary)'
+                          : 'border-(--app-border) bg-(--white) text-(--black)/60 hover:border-(--teal-primary)/50 hover:bg-(--teal-primary)/5'
+                      }`}
+                      aria-label={label}
+                    >
+                      <Icon className="h-6 w-6" aria-hidden />
+                    </button>
+                  ))}
+                </div>
+              </div>
               <FormInput
                 id="panel-name"
                 label="نام پنل"
