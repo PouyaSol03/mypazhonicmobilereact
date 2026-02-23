@@ -116,6 +116,88 @@ body {
   );
 }
 
+/* Story ring: only the border has the effect; logo inside stays fixed and centered */
+@keyframes story-ring-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.story-ring {
+  position: relative;
+  border-radius: 9999px;
+  /* Ring is on pseudo-element so only the border rotates, not the logo */
+}
+
+.story-ring::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: conic-gradient(
+    from 0deg,
+    var(--teal-primary),
+    var(--teal-secondary),
+    var(--teal-tertiary),
+    var(--teal-primary)
+  );
+  animation: story-ring-rotate 3s linear infinite;
+  z-index: 0;
+  /* Only show a 2px ring: center transparent, ring visible */
+  -webkit-mask: radial-gradient(circle, transparent calc(50% - 2px), white calc(50% - 2px));
+  mask: radial-gradient(circle, transparent calc(50% - 2px), white calc(50% - 2px));
+}
+
+.story-ring-inner {
+  position: relative;
+  z-index: 1;
+  margin: 2px;
+  width: calc(100% - 4px);
+  height: calc(100% - 4px);
+  border-radius: 9999px;
+  background: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Logo stays fixed and centered; no transform */
+}
+
+/* Story progress bar: each segment fills over 15s */
+@keyframes story-segment-fill {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+.story-progress-segment {
+  flex: 1;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.story-progress-segment.active .story-progress-segment-fill {
+  animation: story-segment-fill 15s linear forwards;
+}
+
+.story-progress-segment.done .story-progress-segment-fill {
+  width: 100%;
+}
+
+.story-progress-segment-fill {
+  height: 100%;
+  width: 0%;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 1px;
+}
+
 /* react-swipeable-list: allow parent to scroll, don't force height */
 .swipeable-list {
   height: auto;
