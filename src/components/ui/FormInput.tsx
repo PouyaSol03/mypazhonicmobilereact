@@ -1,4 +1,4 @@
-import { InputHTMLAttributes, ReactNode } from 'react'
+import type { InputHTMLAttributes, ReactNode } from 'react'
 
 interface FormInputProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string

@@ -2,7 +2,6 @@ import { useState } from "react"
 import { Link } from "react-router-dom"
 import PazhLogo from "../../assets/logos/PazhLogo"
 import PazhLogoTypo from "../../assets/logos/PazhLogoTypo"
-import { toPersianDigits } from "../../utils/digits"
 
 const LockIcon = () => (
   <svg
@@ -82,8 +81,6 @@ const EyeOffIcon = () => (
 const RegisterPage = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const supportPhone = toPersianDigits("09900213009")
-  const appVersion = toPersianDigits("1.0.0")
 
   return (
     <div className="flex h-full w-full max-w-md flex-col items-center justify-center gap-6 px-4 py-4">

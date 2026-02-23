@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { IoGridOutline, IoGrid } from 'react-icons/io5'
 import { IoSettingsOutline, IoSettings } from 'react-icons/io5'
 import { IoPersonOutline, IoPerson } from 'react-icons/io5'
@@ -22,6 +22,8 @@ const navItems: Array<{
 ]
 
 export function BottomNav() {
+  const location = useLocation()
+
   return (
     <div className="fixed inset-x-0 bottom-0 z-10 flex justify-center px-4 pb-4 pt-2 pointer-events-none [&>nav]:pointer-events-auto">
       <nav
@@ -32,17 +34,21 @@ export function BottomNav() {
           <NavLink
             key={item.to}
             to={item.to}
-            isActive={item.isActive}
-            className={({ isActive }) =>
-              `flex flex-col items-center justify-center gap-1 rounded-3xl px-6 py-2 text-center text-xs font-medium transition ${
-                isActive
-                  ? 'bg-(--app-primary) text-(--white)'
-                  : 'text-(--teal-tertiary) hover:bg-(--app-gradient-start)'
-              }`
-            }
+            className={({ isActive }) => {
+              const resolvedActive = item.isActive
+                ? item.isActive(isActive ? { pathname: location.pathname } : null, { pathname: location.pathname })
+                : isActive
+              const activeClass = resolvedActive
+                ? 'bg-(--app-primary) text-(--white)'
+                : 'text-(--teal-tertiary) hover:bg-(--app-gradient-start)'
+              return `flex flex-col items-center justify-center gap-1 rounded-3xl px-6 py-2 text-center text-xs font-medium transition ${activeClass}`
+            }}
           >
             {({ isActive }) => {
-              const Icon = isActive ? item.IconActive : item.Icon
+              const resolvedActive = item.isActive
+                ? item.isActive(isActive ? { pathname: location.pathname } : null, { pathname: location.pathname })
+                : isActive
+              const Icon = resolvedActive ? item.IconActive : item.Icon
               return (
                 <>
                   <Icon className="h-5 w-5 shrink-0" aria-hidden />

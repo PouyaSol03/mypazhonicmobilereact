@@ -9,7 +9,7 @@ interface PazhLogoTypoProps {
 const PazhLogoTypo: FC<PazhLogoTypoProps> = ({
   width = 55,
   height = 75,
-  className,
+  className = '',
 }) => {
   return (
     <>
@@ -19,6 +19,7 @@ const PazhLogoTypo: FC<PazhLogoTypoProps> = ({
         height={height}
         viewBox="0 0 105 41"
         fill="none"
+        className={className}
       >
         <g clipPath="url(#clip0_624_1165)">
           <path

@@ -2,7 +2,6 @@ import { Outlet } from 'react-router-dom'
 import { IoEllipsisVertical } from 'react-icons/io5'
 import { BottomNav } from '../components/navigation/BottomNav'
 import PazhLogo from '../assets/logos/PazhLogo'
-import PazhLogoTypo from '../assets/logos/PazhLogoTypo'
 
 export function MobileLayout() {
   return (
