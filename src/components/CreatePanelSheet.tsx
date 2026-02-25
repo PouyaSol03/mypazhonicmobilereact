@@ -8,8 +8,8 @@ import {
   IoLocationOutline,
   IoKeyOutline,
 } from 'react-icons/io5'
-import { FaBuilding, FaHome, FaStore, FaWarehouse, FaIndustry } from 'react-icons/fa'
 import { FormInput } from './ui/FormInput'
+import { PANEL_ICONS } from '../constants/panelIcons'
 import { FormButton } from './ui/FormButton'
 import { FormSearchSelect, type SearchSelectOption } from './ui/FormSearchSelect'
 
@@ -34,14 +34,6 @@ const PROVINCE_OPTIONS: SearchSelectOption[] = [
   { value: 'qazvin', label: 'قزوین' },
   { value: 'zanjan', label: 'زنجان' },
   { value: 'ardebil', label: 'اردبیل' },
-]
-
-const AVATAR_ICONS: { value: string; label: string; Icon: React.ComponentType<{ className?: string }> }[] = [
-  { value: 'building', label: 'ساختمان', Icon: FaBuilding },
-  { value: 'home', label: 'خانه', Icon: FaHome },
-  { value: 'store', label: 'فروشگاه', Icon: FaStore },
-  { value: 'warehouse', label: 'انبار', Icon: FaWarehouse },
-  { value: 'industry', label: 'صنعت', Icon: FaIndustry },
 ]
 
 const CITY_OPTIONS: SearchSelectOption[] = [
@@ -90,7 +82,7 @@ const initialForm: CreatePanelFormData = {
   province: '',
   city: '',
   udlCode: '',
-  avatar: AVATAR_ICONS[0].value,
+  avatar: PANEL_ICONS[0].value,
 }
 
 export function CreatePanelSheet({ open, onClose, onSubmit }: CreatePanelSheetProps) {
@@ -167,7 +159,7 @@ export function CreatePanelSheet({ open, onClose, onSubmit }: CreatePanelSheetPr
                   آیکون پنل
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {AVATAR_ICONS.map(({ value, label, Icon }) => (
+                  {PANEL_ICONS.map(({ value, label, Icon }) => (
                     <button
                       key={value}
                       type="button"

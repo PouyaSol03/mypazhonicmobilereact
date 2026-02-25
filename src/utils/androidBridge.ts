@@ -15,9 +15,62 @@ declare global {
       getBiometricEnabled(): string
       /** Async: calls callback with result JSON string. callback(JSON.stringify({ success, token?, user?, error? })) */
       loginWithBiometric(callbackJsName: string): void
+      /** Locations: type = "COUNTRY"|"STATE"|"COUNTY"|"CITY". Returns JSON { locations: [...], error? } */
+      getLocationsByType(type: string): string
+      getLocationsByParentId(parentId: string): string
+      getLocationsByTypeAndParent(type: string, parentId: string): string
+      /** Panels & folders (current user). */
+      getPanelsForUser(): string
+      getPanelsByFolder(folderIdJson: string): string
+      createPanel(panelJson: string): string
+      updatePanel(panelJson: string): string
+      deletePanel(panelId: string): string
+      setPanelFolder(panelId: string, folderId: string): string
+      getFolders(): string
+      createFolder(name: string): string
+      updateFolder(folderId: string, name: string): string
+      deleteFolder(folderId: string): string
       onReactReady?(): void
     }
   }
+}
+
+/** Location item from bridge (id, name, type, parentId, code?, sortOrder). */
+export type BridgeLocation = {
+  id: number
+  name: string
+  type: 'COUNTRY' | 'STATE' | 'COUNTY' | 'CITY'
+  parentId: number | null
+  code?: string
+  sortOrder: number
+}
+
+/** Panel from bridge (matches PanelEntity). */
+export type BridgePanel = {
+  id: number
+  userId: number
+  folderId: number | null
+  icon: string | null
+  name: string
+  gsmPhone: string | null
+  ip: string | null
+  port: number | null
+  code: string | null
+  description: string | null
+  serialNumber: string | null
+  isActive: boolean
+  locationId: number | null
+  codeUD: string | null
+  createdAt: number
+  updatedAt: number
+}
+
+/** Folder (category) from bridge. */
+export type BridgeFolder = {
+  id: number
+  userId: number
+  name: string
+  sortOrder: number
 }
 
 const getBridge = () => {
@@ -118,6 +171,39 @@ export function getStoredToken(): string | null {
   return localStorage.getItem(TOKEN_KEY)
 }
 
+/** Result shape for location bridge calls. */
+export type LocationsResult = { locations: BridgeLocation[]; error?: string }
+
+function parseLocationsResponse(json: string): LocationsResult {
+  try {
+    const data = JSON.parse(json) as { locations?: BridgeLocation[]; error?: string }
+    return { locations: data.locations ?? [], error: data.error }
+  } catch {
+    return { locations: [], error: 'پاسخ نامعتبر' }
+  }
+}
+
+/** Get all locations of a type (e.g. "STATE" for provinces). */
+export function getLocationsByType(type: string): LocationsResult {
+  const bridge = getBridge()
+  if (!bridge) return { locations: [] }
+  return parseLocationsResponse(bridge.getLocationsByType(type))
+}
+
+/** Get direct children of a parent (e.g. parentId "1" for states of Iran, "10" for counties of Tehran). */
+export function getLocationsByParentId(parentId: string): LocationsResult {
+  const bridge = getBridge()
+  if (!bridge) return { locations: [] }
+  return parseLocationsResponse(bridge.getLocationsByParentId(parentId))
+}
+
+/** Get locations of given type with specific parent (e.g. type "STATE", parentId "1"). */
+export function getLocationsByTypeAndParent(type: string, parentId: string): LocationsResult {
+  const bridge = getBridge()
+  if (!bridge) return { locations: [] }
+  return parseLocationsResponse(bridge.getLocationsByTypeAndParent(type, parentId))
+}
+
 /** Get whether biometric login is enabled (from Android prefs). */
 export function getBiometricEnabled(): boolean {
   const bridge = getBridge()
@@ -174,4 +260,130 @@ export function loginWithBiometric(
     }
   }
   bridge.loginWithBiometric(callbackName)
+}
+
+// --- Panels & folders ---
+
+export type PanelsResult = { panels: BridgePanel[]; error?: string }
+export type FoldersResult = { folders: BridgeFolder[]; error?: string }
+
+function parsePanelsResponse(json: string): PanelsResult {
+  try {
+    const data = JSON.parse(json) as { panels?: BridgePanel[]; error?: string }
+    return { panels: data.panels ?? [], error: data.error }
+  } catch {
+    return { panels: [], error: 'پاسخ نامعتبر' }
+  }
+}
+
+function parseFoldersResponse(json: string): FoldersResult {
+  try {
+    const data = JSON.parse(json) as { folders?: BridgeFolder[]; error?: string }
+    return { folders: data.folders ?? [], error: data.error }
+  } catch {
+    return { folders: [], error: 'پاسخ نامعتبر' }
+  }
+}
+
+export function getPanelsForUser(): PanelsResult {
+  const bridge = getBridge()
+  if (!bridge) return { panels: [] }
+  return parsePanelsResponse(bridge.getPanelsForUser())
+}
+
+/** folderId: empty string or "null" = uncategorized; number string = that folder. */
+export function getPanelsByFolder(folderId: string): PanelsResult {
+  const bridge = getBridge()
+  if (!bridge) return { panels: [] }
+  return parsePanelsResponse(bridge.getPanelsByFolder(folderId === '' ? 'null' : folderId))
+}
+
+export function createPanel(payload: Partial<BridgePanel> & { name: string }): { success: boolean; id?: number; error?: string } {
+  const bridge = getBridge()
+  if (!bridge) return { success: false, error: 'Bridge not available' }
+  try {
+    const json = bridge.createPanel(JSON.stringify(payload))
+    const data = JSON.parse(json) as { success?: boolean; id?: number; error?: string }
+    return { success: !!data.success, id: data.id, error: data.error }
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+export function updatePanel(payload: BridgePanel): { success: boolean; error?: string } {
+  const bridge = getBridge()
+  if (!bridge) return { success: false, error: 'Bridge not available' }
+  try {
+    const json = bridge.updatePanel(JSON.stringify(payload))
+    const data = JSON.parse(json) as { success?: boolean; error?: string }
+    return { success: !!data.success, error: data.error }
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+export function deletePanel(panelId: string | number): { success: boolean; error?: string } {
+  const bridge = getBridge()
+  if (!bridge) return { success: false, error: 'Bridge not available' }
+  try {
+    const json = bridge.deletePanel(String(panelId))
+    const data = JSON.parse(json) as { success?: boolean; error?: string }
+    return { success: !!data.success, error: data.error }
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+export function setPanelFolder(panelId: string | number, folderId: string | number | null): { success: boolean; error?: string } {
+  const bridge = getBridge()
+  if (!bridge) return { success: false, error: 'Bridge not available' }
+  try {
+    const json = bridge.setPanelFolder(String(panelId), folderId == null ? '' : String(folderId))
+    const data = JSON.parse(json) as { success?: boolean; error?: string }
+    return { success: !!data.success, error: data.error }
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+export function getFolders(): FoldersResult {
+  const bridge = getBridge()
+  if (!bridge) return { folders: [] }
+  return parseFoldersResponse(bridge.getFolders())
+}
+
+export function createFolder(name: string): { success: boolean; id?: number; error?: string } {
+  const bridge = getBridge()
+  if (!bridge) return { success: false, error: 'Bridge not available' }
+  try {
+    const json = bridge.createFolder(name)
+    const data = JSON.parse(json) as { success?: boolean; id?: number; error?: string }
+    return { success: !!data.success, id: data.id, error: data.error }
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+export function updateFolder(folderId: string | number, name: string): { success: boolean; error?: string } {
+  const bridge = getBridge()
+  if (!bridge) return { success: false, error: 'Bridge not available' }
+  try {
+    const json = bridge.updateFolder(String(folderId), name)
+    const data = JSON.parse(json) as { success?: boolean; error?: string }
+    return { success: !!data.success, error: data.error }
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+export function deleteFolder(folderId: string | number): { success: boolean; error?: string } {
+  const bridge = getBridge()
+  if (!bridge) return { success: false, error: 'Bridge not available' }
+  try {
+    const json = bridge.deleteFolder(String(folderId))
+    const data = JSON.parse(json) as { success?: boolean; error?: string }
+    return { success: !!data.success, error: data.error }
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : String(e) }
+  }
 }

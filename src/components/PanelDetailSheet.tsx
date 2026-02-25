@@ -1,9 +1,11 @@
 import { motion, AnimatePresence } from 'framer-motion'
+import { useState } from 'react'
 import {
   IoClose,
   IoChatbubbleOutline,
   IoGlobeOutline,
   IoWifi,
+  IoFolderOutline,
 } from 'react-icons/io5'
 
 export type ConnectionWay = 'sms' | 'internet' | 'wifi'
@@ -15,6 +17,12 @@ export interface PanelDetail {
   phone: string
   status: 'online' | 'offline'
   unreadCount?: number
+  folderId?: number | null
+}
+
+export interface FolderOption {
+  id: number | null
+  name: string
 }
 
 interface PanelDetailSheetProps {
@@ -24,6 +32,9 @@ interface PanelDetailSheetProps {
   onConnect?: (panel: PanelDetail, way: ConnectionWay) => void
   onEdit?: (panel: PanelDetail) => void
   onDelete?: (panel: PanelDetail) => void
+  /** Folders for "move to folder"; include { id: null, name: 'بدون پوشه' } for uncategorized */
+  folders?: FolderOption[]
+  onSetFolder?: (panelId: string, folderId: number | null) => void
 }
 
 const CONNECTION_WAYS: { value: ConnectionWay; label: string; Icon: React.ComponentType<{ className?: string }> }[] = [
@@ -37,11 +48,18 @@ export function PanelDetailSheet({
   panel,
   onClose,
   onConnect,
+  folders = [],
+  onSetFolder,
 }: PanelDetailSheetProps) {
+  const [showFolderPicker, setShowFolderPicker] = useState(false)
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) onClose()
   }
+
+  const currentFolderName = panel
+    ? folders.find((f) => f.id === (panel.folderId ?? null))?.name ?? 'بدون پوشه'
+    : ''
 
   if (!panel) return null
 
@@ -91,6 +109,49 @@ export function PanelDetailSheet({
             </div>
 
             <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pb-8 pt-2">
+              {/* پوشه (دسته) */}
+              {folders.length > 0 && onSetFolder && (
+                <section className="w-full">
+                  <h3 className="mb-2 text-sm font-medium text-(--teal-tertiary)">پوشه</h3>
+                  {!showFolderPicker ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowFolderPicker(true)}
+                      className="flex w-full items-center gap-3 rounded-xl border border-(--app-border) bg-(--white) px-3 py-2.5 text-right transition hover:border-(--teal-primary)/50"
+                    >
+                      <IoFolderOutline className="h-5 w-5 text-(--teal-tertiary)" />
+                      <span className="flex-1 font-medium text-(--black)">{currentFolderName}</span>
+                    </button>
+                  ) : (
+                    <div className="rounded-xl border border-(--app-border) bg-(--white) overflow-hidden">
+                      {folders.map((f) => (
+                        <button
+                          key={f.id ?? 'null'}
+                          type="button"
+                          onClick={() => {
+                            onSetFolder(panel.id, f.id)
+                            setShowFolderPicker(false)
+                          }}
+                          className={`flex w-full items-center gap-3 px-3 py-2.5 text-right transition hover:bg-(--app-gradient-start) ${
+                            (panel.folderId ?? null) === f.id ? 'bg-(--teal-primary)/10 text-(--teal-primary)' : ''
+                          }`}
+                        >
+                          <IoFolderOutline className="h-5 w-5 opacity-70" />
+                          <span className="font-medium">{f.name}</span>
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setShowFolderPicker(false)}
+                        className="w-full border-t border-(--app-border) px-3 py-2 text-sm text-(--teal-tertiary)"
+                      >
+                        بستن
+                      </button>
+                    </div>
+                  )}
+                </section>
+              )}
+
               {/* نحوه اتصال به این پنل — سه گزینه در یک ردیف */}
               <section className="w-full">
                 <h3 className="mb-3 text-sm font-medium text-(--teal-tertiary)">

@@ -5,10 +5,12 @@ import PazhLogoTypo from "../../assets/logos/PazhLogoTypo"
 import { IoMdFingerPrint } from "react-icons/io"
 import { toPersianDigits } from "../../utils/digits"
 import toast from "react-hot-toast"
-import { login, setStoredToken, getBiometricEnabled, loginWithBiometric } from "../../utils/androidBridge"
+import { useAuth } from "../../contexts/AuthContext"
+import { login, getBiometricEnabled, loginWithBiometric } from "../../utils/androidBridge"
 
 const LoginPage = () => {
   const navigate = useNavigate()
+  const { setSession } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [phoneNumber, setPhoneNumber] = useState("")
   const [password, setPassword] = useState("")
@@ -34,7 +36,7 @@ const LoginPage = () => {
     try {
       const result = login(phone, pass)
       if (result.success && result.token) {
-        setStoredToken(result.token)
+        setSession(result.token, result.user)
         toast.success("ورود با موفقیت انجام شد")
         navigate("/app/home")
       } else {
@@ -51,7 +53,7 @@ const LoginPage = () => {
     loginWithBiometric((result) => {
       setBiometricLoading(false)
       if (result.success && result.token) {
-        setStoredToken(result.token)
+        setSession(result.token, result.user)
         toast.success("ورود با موفقیت انجام شد")
         navigate("/app/home")
       } else {

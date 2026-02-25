@@ -1,5 +1,6 @@
 import { Toaster } from 'react-hot-toast'
 import { RouterProvider } from 'react-router-dom'
+import { AuthProvider } from './contexts/AuthContext'
 import { router } from './app/router'
 
 const toastFontFamily = '"Vazirmatn", Inter, system-ui, sans-serif'
@@ -30,7 +31,9 @@ function App() {
         </div> */}
 
         <div className="relative z-10 h-full w-full">
-          <RouterProvider router={router} />
+          <AuthProvider>
+            <RouterProvider router={router} />
+          </AuthProvider>
         </div>
       </div>
 

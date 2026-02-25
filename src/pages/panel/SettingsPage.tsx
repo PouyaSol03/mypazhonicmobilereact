@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import {
   IoFingerPrintOutline,
   IoNotificationsOutline,
@@ -11,8 +11,11 @@ import {
   IoLanguageOutline,
   IoLockClosedOutline,
   IoCloudOutline,
+  IoFolderOutline,
+  IoAddOutline,
+  IoPencilOutline,
 } from 'react-icons/io5'
-import { getBiometricEnabled, setBiometricEnabled } from '../../utils/androidBridge'
+import { getBiometricEnabled, setBiometricEnabled, getFolders, createFolder, updateFolder, deleteFolder, type BridgeFolder } from '../../utils/androidBridge'
 
 const APP_VERSION = '1.0.0 (۱۴۰۳)'
 
@@ -38,6 +41,39 @@ function SettingsPage() {
   }
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
+  const [folders, setFoldersState] = useState<BridgeFolder[]>([])
+
+  const refetchFolders = useCallback(() => {
+    const { folders: list, error } = getFolders()
+    if (!error) setFoldersState(list)
+  }, [])
+
+  useEffect(() => {
+    refetchFolders()
+  }, [refetchFolders])
+
+  const handleAddFolder = () => {
+    const name = window.prompt('نام پوشه جدید')
+    if (!name?.trim()) return
+    const result = createFolder(name.trim())
+    if (result.success) refetchFolders()
+    else if (result.error) window.alert(result.error)
+  }
+
+  const handleEditFolder = (folder: BridgeFolder) => {
+    const name = window.prompt('نام پوشه', folder.name)
+    if (name == null || name.trim() === '') return
+    const result = updateFolder(folder.id, name.trim())
+    if (result.success) refetchFolders()
+    else if (result.error) window.alert(result.error)
+  }
+
+  const handleDeleteFolder = (folder: BridgeFolder) => {
+    if (!window.confirm(`حذف پوشه «${folder.name}»؟ پنل‌های داخل آن به «بدون پوشه» منتقل می‌شوند.`)) return
+    const result = deleteFolder(folder.id)
+    if (result.success) refetchFolders()
+    else if (result.error) window.alert(result.error)
+  }
 
   const sections: Array<{ title: string; rows: SettingsRow[] }> = [
     {
@@ -63,6 +99,10 @@ function SettingsPage() {
           switchId: 'notifications',
         },
       ],
+    },
+    {
+      title: 'پوشه‌های پنل (دسته‌ها)',
+      rows: [], // rendered separately below
     },
     {
       title: 'پشتیبانی',
@@ -108,7 +148,7 @@ function SettingsPage() {
       <button
         type="button"
         role="switch"
-        aria-checked={isOn}
+        aria-checked={isOn ? 'true' : 'false'}
         aria-label={switchId === 'biometric' ? (isOn ? 'ورود با بیومتریک فعال' : 'ورود با بیومتریک غیرفعال') : (isOn ? 'اعلان‌ها روشن' : 'اعلان‌ها خاموش')}
         onClick={(e) => {
           e.stopPropagation()
@@ -141,29 +181,71 @@ function SettingsPage() {
             <h2 className="mb-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-(--teal-tertiary)">
               {group.title}
             </h2>
-            <div className="overflow-hidden rounded-2xl border border-(--app-border) bg-(--white) shadow-sm">
-              {group.rows.map((row, index) => (
+            {group.title === 'پوشه‌های پنل (دسته‌ها)' ? (
+              <div className="overflow-hidden rounded-2xl border border-(--app-border) bg-(--white) shadow-sm">
+                {folders.map((folder, index) => (
+                  <div
+                    key={folder.id}
+                    className={`flex w-full items-center gap-3 px-3 py-3.5 text-right ${
+                      index < folders.length - 1 ? 'border-b border-(--app-border)/60' : ''
+                    }`}
+                  >
+                    <span className="text-(--teal-tertiary)" aria-hidden>
+                      <IoFolderOutline className="h-5 w-5" />
+                    </span>
+                    <span className="min-w-0 flex-1 font-medium text-(--black)">{folder.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleEditFolder(folder)}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-(--teal-tertiary) transition hover:bg-(--app-gradient-start)"
+                      aria-label="ویرایش پوشه"
+                    >
+                      <IoPencilOutline className="h-5 w-5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteFolder(folder)}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-red-500 transition hover:bg-red-500/10"
+                      aria-label="حذف پوشه"
+                    >
+                      <IoTrashOutline className="h-5 w-5" />
+                    </button>
+                  </div>
+                ))}
                 <button
-                  key={row.id}
                   type="button"
-                  className={`flex w-full items-center gap-3 px-3 py-3.5 text-right transition active:bg-(--app-gradient-start) ${
-                    index < group.rows.length - 1 ? 'border-b border-(--app-border)/60' : ''
-                  } ${row.danger ? 'text-red-600' : 'text-(--black)'}`}
+                  onClick={handleAddFolder}
+                  className="flex w-full items-center gap-3 px-3 py-3.5 text-right transition active:bg-(--app-gradient-start) text-(--teal-primary)"
                 >
-                  <span className={row.danger ? 'text-red-500' : 'text-(--teal-tertiary)'} aria-hidden>
-                    {row.icon}
-                  </span>
-                  <span className="min-w-0 flex-1 font-medium">{row.label}</span>
-                  {row.value && !row.switchId && (
-                    <span className="text-sm text-(--teal-tertiary)">{row.value}</span>
-                  )}
-                  {row.switchId && renderSwitch(row.switchId)}
-                  {!row.switchId && (
-                    <IoChevronForward className="h-5 w-5 shrink-0 rotate-180 text-(--teal-tertiary)" aria-hidden />
-                  )}
+                  <IoAddOutline className="h-5 w-5 shrink-0" aria-hidden />
+                  <span className="font-medium">افزودن پوشه</span>
                 </button>
-              ))}
-            </div>
+              </div>
+            ) : (
+              <div className="overflow-hidden rounded-2xl border border-(--app-border) bg-(--white) shadow-sm">
+                {group.rows.map((row, index) => (
+                  <button
+                    key={row.id}
+                    type="button"
+                    className={`flex w-full items-center gap-3 px-3 py-3.5 text-right transition active:bg-(--app-gradient-start) ${
+                      index < group.rows.length - 1 ? 'border-b border-(--app-border)/60' : ''
+                    } ${row.danger ? 'text-red-600' : 'text-(--black)'}`}
+                  >
+                    <span className={row.danger ? 'text-red-500' : 'text-(--teal-tertiary)'} aria-hidden>
+                      {row.icon}
+                    </span>
+                    <span className="min-w-0 flex-1 font-medium">{row.label}</span>
+                    {row.value && !row.switchId && (
+                      <span className="text-sm text-(--teal-tertiary)">{row.value}</span>
+                    )}
+                    {row.switchId && renderSwitch(row.switchId)}
+                    {!row.switchId && (
+                      <IoChevronForward className="h-5 w-5 shrink-0 rotate-180 text-(--teal-tertiary)" aria-hidden />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
           </section>
         ))}
       </main>

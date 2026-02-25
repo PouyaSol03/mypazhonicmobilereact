@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { IoSearchOutline, IoPencilOutline, IoTrashOutline } from 'react-icons/io5'
 import { toPersianDigits } from '../../utils/digits'
-import { FaBuilding } from 'react-icons/fa'
 import {
   SwipeableList,
   SwipeableListItem,
@@ -16,12 +15,23 @@ import { FloatingCreatePanelButton } from '../../components/FloatingCreatePanelB
 import { CreatePanelSheet } from '../../components/CreatePanelSheet'
 import { PanelDetailSheet, type PanelDetail } from '../../components/PanelDetailSheet'
 import { useHeaderSearch } from '../../contexts/HeaderSearchContext'
+import { getPanelIcon } from '../../constants/panelIcons'
+import {
+  getPanelsForUser,
+  getFolders,
+  createPanel,
+  deletePanel,
+  setPanelFolder,
+  type BridgePanel,
+  type BridgeFolder,
+} from '../../utils/androidBridge'
 
 const SCROLL_HIDE = 56
 const SCROLL_SHOW = 16
-const CATEGORIES = ['همه', 'دیده نشده', 'خانه', 'محل کار', 'مغازه ها'] as const
 
 type PanelStatus = 'online' | 'offline'
+
+export type CategoryId = 'all' | 'uncategorized' | number
 
 interface Panel {
   id: string
@@ -30,37 +40,36 @@ interface Panel {
   phone: string
   status: PanelStatus
   unreadCount?: number
-  /** آخرین رویداد — only shown when panel has badge (unreadCount) */
   lastEvent?: string
+  folderId: number | null
+  icon: string | null
 }
 
-const MOCK_PANELS: Panel[] = [
-  { id: '1', name: 'پنل فروشگاه مرکزی', ip: '192.168.1.101', phone: '09121234567', status: 'online', unreadCount: 3, lastEvent: 'ورود غیر مجاز' },
-  { id: '2', name: 'پنل انبار شمال', ip: '192.168.1.102', phone: '09129876543', status: 'offline', unreadCount: 12, lastEvent: 'هشدار دما' },
-  { id: '3', name: 'پنل شعبه یک', ip: '192.168.1.103', phone: '09131112222', status: 'online' },
-  { id: '4', name: 'پنل شعبه دو', ip: '192.168.1.104', phone: '09133334444', status: 'online', unreadCount: 1, lastEvent: 'ورود غیر مجاز' },
-  { id: '6', name: 'پنل اداری', ip: '192.168.1.105', phone: '09125556666', status: 'offline', unreadCount: 99, lastEvent: 'قطع اتصال' },
-  { id: '7', name: 'پنل اداری', ip: '192.168.1.105', phone: '09125556666', status: 'online' },
-  { id: '8', name: 'پنل اداری', ip: '192.168.1.105', phone: '09125556666', status: 'offline', unreadCount: 5, lastEvent: 'ورود غیر مجاز' },
-  { id: '9', name: 'پنل اداری', ip: '192.168.1.105', phone: '09125556666', status: 'online', unreadCount: 2, lastEvent: 'تغییر رمز' },
-  { id: '10', name: 'پنل اداری', ip: '192.168.1.105', phone: '09125556666', status: 'offline' },
-  { id: '11', name: 'پنل اداری', ip: '192.168.1.105', phone: '09125556666', status: 'online', unreadCount: 1, lastEvent: 'ورود غیر مجاز' },
-  { id: '12', name: 'پنل اداری', ip: '192.168.1.105', phone: '09125556666', status: 'online' },
-  { id: '13', name: 'پنل اداری', ip: '192.168.1.105', phone: '09125556666', status: 'offline' },
-  { id: '14', name: 'پنل اداری', ip: '192.168.1.105', phone: '09125556666', status: 'online', unreadCount: 7, lastEvent: 'ورود غیر مجاز' },
-]
+function bridgePanelToPanel(p: BridgePanel): Panel {
+  return {
+    id: String(p.id),
+    name: p.name,
+    ip: p.ip ?? '',
+    phone: p.gsmPhone ?? '',
+    status: p.isActive ? 'online' : 'offline',
+    folderId: p.folderId,
+    icon: p.icon,
+  }
+}
 
-function PanelAvatar({ status }: { status: PanelStatus }) {
+function PanelAvatar({ status, iconKey }: { status: PanelStatus; iconKey?: string | null }) {
+  const Icon = getPanelIcon(iconKey)
   return (
     <div
-      className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full border shadow-sm transition-all duration-200 ${status === 'online'
-        ? 'border-green-500/35 bg-green-500/10 text-green-700'
-        : 'border-red-500/35 bg-red-500/10 text-red-700'
-        }`}
+      className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full border shadow-sm transition-all duration-200 ${
+        status === 'online'
+          ? 'border-green-500/35 bg-green-500/10 text-green-700'
+          : 'border-red-500/35 bg-red-500/10 text-red-700'
+      }`}
       aria-hidden
     >
       <span className="text-lg font-semibold">
-        <FaBuilding />
+        <Icon className="h-6 w-6" aria-hidden />
       </span>
     </div>
   )
@@ -70,15 +79,52 @@ const PanelListPage = () => {
   const navigate = useNavigate()
   const headerSearch = useHeaderSearch()
   const [showSearch, setShowSearch] = useState(true)
-  const [activeCategory, setActiveCategory] = useState<(typeof CATEGORIES)[number]>('همه')
+  const [panels, setPanels] = useState<Panel[]>([])
+  const [folders, setFolders] = useState<BridgeFolder[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [activeCategory, setActiveCategory] = useState<CategoryId>('all')
   const [createSheetOpen, setCreateSheetOpen] = useState(false)
   const [detailPanel, setDetailPanel] = useState<PanelDetail | null>(null)
   const [detailSheetOpen, setDetailSheetOpen] = useState(false)
-  const [panels, setPanels] = useState<Panel[]>(() => [...MOCK_PANELS])
   const [swipingPanelId, setSwipingPanelId] = useState<string | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const rafRef = useRef<number | null>(null)
   const lastShowRef = useRef(true)
+
+  const refetchPanels = useCallback(() => {
+    const { panels: list, error } = getPanelsForUser()
+    if (error) return
+    setPanels(list.map(bridgePanelToPanel))
+  }, [])
+
+  const refetchFolders = useCallback(() => {
+    const { folders: list, error } = getFolders()
+    if (error) return
+    setFolders(list)
+  }, [])
+
+  useEffect(() => {
+    refetchPanels()
+    refetchFolders()
+  }, [refetchPanels, refetchFolders])
+
+  const categories = useMemo(() => {
+    const items: { id: CategoryId; label: string }[] = [
+      { id: 'all', label: 'همه' },
+      { id: 'uncategorized', label: 'بدون پوشه' },
+    ]
+    folders.forEach((f) => items.push({ id: f.id, label: f.name }))
+    return items
+  }, [folders])
+
+  const filteredPanels = useMemo(() => {
+    let list = panels
+    if (activeCategory === 'uncategorized') list = list.filter((p) => p.folderId == null)
+    else if (activeCategory !== 'all') list = list.filter((p) => p.folderId === activeCategory)
+    const q = searchQuery.trim().toLowerCase()
+    if (q) list = list.filter((p) => p.name.toLowerCase().includes(q))
+    return list
+  }, [panels, activeCategory, searchQuery])
 
   useEffect(() => {
     if (!headerSearch) return
@@ -131,6 +177,8 @@ const PanelListPage = () => {
             <input
               type="search"
               placeholder="جستجوی پنل..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="min-w-0 flex-1 bg-transparent text-sm text-(--black) outline-none placeholder:text-(--teal-tertiary)/60"
               aria-label="جستجوی پنل"
             />
@@ -150,19 +198,20 @@ const PanelListPage = () => {
           </>
         )}
         <div className="relative z-10 no-scrollbar flex w-full items-center gap-1 overflow-x-auto rounded-2xl border border-(--teal-primary)/30 px-1 py-1 shadow-sm bg-(--background-light)">
-          {CATEGORIES.map((category) => {
-            const isActive = category === activeCategory
+          {categories.map((cat) => {
+            const isActive = cat.id === activeCategory
             return (
               <button
-                key={category}
+                key={cat.id === 'all' ? 'all' : cat.id === 'uncategorized' ? 'uncategorized' : `f-${cat.id}`}
                 type="button"
-                onClick={() => setActiveCategory(category)}
-                className={`w-full rounded-full border px-3 py-1 text-xs font-medium transition-all duration-200 text-nowrap ${isActive
-                  ? 'border-(--teal-primary)/40 bg-(--teal-primary) text-black shadow-sm'
-                  : 'border-(--teal-tertiary)/80 bg-(--teal-tertiary)/30 text-black hover:border-(--teal-primary)/25 hover:bg-(--app-gradient-start)/40'
-                  }`}
+                onClick={() => setActiveCategory(cat.id)}
+                className={`w-full rounded-full border px-3 py-1 text-xs font-medium transition-all duration-200 text-nowrap ${
+                  isActive
+                    ? 'border-(--teal-primary)/40 bg-(--teal-primary) text-black shadow-sm'
+                    : 'border-(--teal-tertiary)/80 bg-(--teal-tertiary)/30 text-black hover:border-(--teal-primary)/25 hover:bg-(--app-gradient-start)/40'
+                }`}
               >
-                {category}
+                {cat.label}
               </button>
             )
           })}
@@ -177,7 +226,7 @@ const PanelListPage = () => {
           swipeStartThreshold={5}
           className="divide-y divide-(--app-border)/70"
         >
-          {panels.map((panel) => (
+          {filteredPanels.map((panel) => (
             <SwipeableListItem
               key={panel.id}
               threshold={0.25}
@@ -200,7 +249,12 @@ const PanelListPage = () => {
                     destructive
                     onClick={() => {
                       if (window.confirm(`حذف پنل «${panel.name}»؟`)) {
-                        setPanels((prev) => prev.filter((p) => p.id !== panel.id))
+                        const result = deletePanel(panel.id)
+                        if (result.success) {
+                          setPanels((prev) => prev.filter((p) => p.id !== panel.id))
+                        } else if (result.error) {
+                          window.alert(result.error)
+                        }
                       }
                     }}
                   >
@@ -226,7 +280,7 @@ const PanelListPage = () => {
                     : 'border-r-red-600'
                   }`}
               >
-                <PanelAvatar status={panel.status} />
+                <PanelAvatar status={panel.status} iconKey={panel.icon} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold tracking-tight text-(--black)">{panel.name}</p>
                   <p className="mt-0.5 truncate text-xs text-(--teal-tertiary)/90">
@@ -253,7 +307,19 @@ const PanelListPage = () => {
         open={createSheetOpen}
         onClose={() => setCreateSheetOpen(false)}
         onSubmit={(data) => {
-          console.log('Create panel:', data)
+          const result = createPanel({
+            name: data.name,
+            ip: data.ip || undefined,
+            gsmPhone: data.phone || undefined,
+            codeUD: data.udlCode || undefined,
+            icon: data.avatar,
+          })
+          if (result.success) {
+            refetchPanels()
+            setCreateSheetOpen(false)
+          } else if (result.error) {
+            window.alert(result.error)
+          }
         }}
       />
       <PanelDetailSheet
@@ -270,9 +336,18 @@ const PanelListPage = () => {
         }}
         onEdit={(p) => console.log('Edit panel:', p)}
         onDelete={(p) => {
-          setPanels((prev) => prev.filter((item) => item.id !== p.id))
-          setDetailSheetOpen(false)
-          setDetailPanel(null)
+          const result = deletePanel(p.id)
+          if (result.success) {
+            setPanels((prev) => prev.filter((item) => item.id !== p.id))
+            setDetailSheetOpen(false)
+            setDetailPanel(null)
+          } else if (result.error) window.alert(result.error)
+        }}
+        folders={[{ id: null, name: 'بدون پوشه' }, ...folders]}
+        onSetFolder={(panelId, folderId) => {
+          const result = setPanelFolder(panelId, folderId ?? '')
+          if (result.success) refetchPanels()
+          else if (result.error) window.alert(result.error)
         }}
       />
     </div>

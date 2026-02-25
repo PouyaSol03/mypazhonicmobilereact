@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { logout, setStoredToken } from '../../utils/androidBridge'
+import { useAuth } from '../../contexts/AuthContext'
 import {
   IoPersonCircleOutline,
   IoCallOutline,
@@ -14,16 +14,8 @@ import {
   IoCameraOutline,
   IoPencilOutline,
   IoMoonOutline,
+  IoCardOutline,
 } from 'react-icons/io5'
-
-// Demo profile data (Telegram-style)
-const DEMO_PROFILE = {
-  name: 'کاربر پاژونیک',
-  username: 'pazhonic_user',
-  phone: '+98 912 123 4567',
-  bio: 'مدیریت پنل‌های امنیتی از طریق اپلیکیشن پازنیک',
-  avatarPlaceholder: true,
-}
 
 type SettingsRow = {
   id: string
@@ -38,19 +30,29 @@ type Theme = 'light' | 'dark'
 
 function ProfilePage() {
   const navigate = useNavigate()
+  const { user, refreshUser, logout: authLogout } = useAuth()
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [theme, setTheme] = useState<Theme>('light')
 
+  useEffect(() => {
+    refreshUser()
+  }, [refreshUser])
+
   const handleLogout = () => {
-    logout()
-    setStoredToken(null)
+    authLogout()
     navigate('/', { replace: true })
   }
 
-  const infoSection: SettingsRow[] = [
-    { id: 'phone', icon: <IoCallOutline className="h-5 w-5" />, label: 'شماره تلفن', value: DEMO_PROFILE.phone },
-    { id: 'username', icon: <IoPersonCircleOutline className="h-5 w-5" />, label: 'نام کاربری', value: `@${DEMO_PROFILE.username}` },
-  ]
+  const displayName =
+    user?.fullName?.trim() ||
+    [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim() ||
+    user?.userName ||
+    'کاربر'
+
+  const infoSection: SettingsRow[] = []
+  if (user?.phoneNumber) infoSection.push({ id: 'phone', icon: <IoCallOutline className="h-5 w-5" />, label: 'شماره تلفن', value: user.phoneNumber })
+  if (user?.userName) infoSection.push({ id: 'username', icon: <IoPersonCircleOutline className="h-5 w-5" />, label: 'نام کاربری', value: `@${user.userName}` })
+  if (user?.nationalCode) infoSection.push({ id: 'nationalCode', icon: <IoCardOutline className="h-5 w-5" />, label: 'کد ملی', value: user.nationalCode })
 
   const settingsSections: Array<{ title: string; rows: SettingsRow[] }> = [
     {
@@ -86,27 +88,28 @@ function ProfilePage() {
       dir="rtl"
       className="flex min-h-full w-full flex-col bg-(--background-light) text-right"
     >
-      {/* Header area: avatar + name + bio (Telegram style) */}
+      {/* Header area: avatar + name (from logged-in user) */}
       <div className="shrink-0 border-b border-(--app-border)/70">
         <div className="flex flex-col items-center px-4 pt-6 pb-4">
-          {/* Avatar — large, tap to change (demo) */}
+          {/* Avatar — from user or placeholder */}
           <button
             type="button"
-            className="relative flex h-24 w-24 shrink-0 items-center justify-center rounded-full border-2 border-(--teal-primary)/30 bg-(--teal-primary)/10 text-(--teal-primary) shadow-md transition active:scale-[0.98]"
+            className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-(--teal-primary)/30 bg-(--teal-primary)/10 text-(--teal-primary) shadow-md transition active:scale-[0.98]"
             aria-label="تغییر تصویر پروفایل"
           >
-            <IoPersonCircleOutline className="h-14 w-14" aria-hidden />
+            {user?.avatarUrl ? (
+              <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <IoPersonCircleOutline className="h-14 w-14" aria-hidden />
+            )}
             <span className="absolute bottom-0 left-0 flex h-8 w-8 items-center justify-center rounded-full border-2 border-(--surface-light) bg-(--teal-primary) text-white">
               <IoCameraOutline className="h-4 w-4" aria-hidden />
             </span>
           </button>
 
-          <h1 className="mt-3 text-xl font-bold text-(--black)">{DEMO_PROFILE.name}</h1>
-          <p className="mt-0.5 text-sm text-(--teal-tertiary)">@{DEMO_PROFILE.username}</p>
-          {DEMO_PROFILE.bio && (
-            <p className="mt-2 max-w-[85%] text-center text-sm text-(--teal-tertiary)">
-              {DEMO_PROFILE.bio}
-            </p>
+          <h1 className="mt-3 text-xl font-bold text-(--black)">{displayName}</h1>
+          {user?.userName && (
+            <p className="mt-0.5 text-sm text-(--teal-tertiary)">@{user.userName}</p>
           )}
           <button
             type="button"
@@ -120,7 +123,8 @@ function ProfilePage() {
       </div>
 
       <main className="flex-1 overflow-auto px-4 pb-6 pt-2">
-        {/* Info rows: Phone, Username (Telegram style) */}
+        {/* Info rows: only fields that exist for this user */}
+        {infoSection.length > 0 && (
         <section className="rounded-2xl border border-(--app-border) bg-(--white) shadow-sm overflow-hidden">
           {infoSection.map((row, index) => (
             <div
@@ -140,6 +144,7 @@ function ProfilePage() {
             </div>
           ))}
         </section>
+        )}
 
         {/* Settings sections */}
         {settingsSections.map((group) => (
@@ -167,7 +172,9 @@ function ProfilePage() {
                     <button
                       type="button"
                       role="switch"
-                      aria-checked={notificationsEnabled}
+                      aria-checked={notificationsEnabled ? 'true' : 'false'}
+                      aria-label={notificationsEnabled ? 'اعلان‌ها روشن' : 'اعلان‌ها خاموش'}
+                      title={notificationsEnabled ? 'اعلان‌ها روشن' : 'اعلان‌ها خاموش'}
                       onClick={(e) => {
                         e.stopPropagation()
                         setNotificationsEnabled((v) => !v)
@@ -189,8 +196,9 @@ function ProfilePage() {
                     <button
                       type="button"
                       role="switch"
-                      aria-checked={theme === 'dark'}
+                      aria-checked={theme === 'dark' ? 'true' : 'false'}
                       aria-label={theme === 'dark' ? 'تم تاریک' : 'تم روشن'}
+                      title={theme === 'dark' ? 'تم تاریک' : 'تم روشن'}
                       onClick={(e) => {
                         e.stopPropagation()
                         setTheme((t) => (t === 'light' ? 'dark' : 'light'))
