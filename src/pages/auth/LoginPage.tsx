@@ -1,25 +1,70 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import PazhLogo from "../../assets/logos/PazhLogo"
 import PazhLogoTypo from "../../assets/logos/PazhLogoTypo"
 import { IoMdFingerPrint } from "react-icons/io"
 import { toPersianDigits } from "../../utils/digits"
+import toast from "react-hot-toast"
+import { login, setStoredToken, getBiometricEnabled, loginWithBiometric } from "../../utils/androidBridge"
 
 const LoginPage = () => {
   const navigate = useNavigate()
   const [showPassword, setShowPassword] = useState(false)
+  const [phoneNumber, setPhoneNumber] = useState("")
+  const [password, setPassword] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [biometricEnabled, setBiometricEnabled] = useState(false)
+  const [biometricLoading, setBiometricLoading] = useState(false)
+
+  useEffect(() => {
+    setBiometricEnabled(getBiometricEnabled())
+  }, [])
+
   const supportPhone = toPersianDigits("09900213009")
   const appVersion = toPersianDigits("1.0.0")
 
-  const handleLogin = () => {
-    navigate("/app/home")
+  const handleLogin = async () => {
+    const phone = phoneNumber.trim()
+    const pass = password.trim()
+    if (!phone || !pass) {
+      toast.error("شماره موبایل و رمز عبور را وارد کنید")
+      return
+    }
+    setLoading(true)
+    try {
+      const result = login(phone, pass)
+      if (result.success && result.token) {
+        setStoredToken(result.token)
+        toast.success("ورود با موفقیت انجام شد")
+        navigate("/app/home")
+      } else {
+        toast.error(result.error || "ورود ناموفق بود")
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleBiometricLogin = () => {
+    if (!biometricEnabled) return
+    setBiometricLoading(true)
+    loginWithBiometric((result) => {
+      setBiometricLoading(false)
+      if (result.success && result.token) {
+        setStoredToken(result.token)
+        toast.success("ورود با موفقیت انجام شد")
+        navigate("/app/home")
+      } else {
+        toast.error(result.error || "ورود با اثر انگشت ناموفق بود")
+      }
+    })
   }
 
   return (
     <div className="flex h-full w-full max-w-md flex-col items-center justify-start gap-6 px-4 py-4">
       <div className="w-full h-full flex flex-col justify-start items-center">
-        <PazhLogo className="h-28 w-28 sm:h-36 sm:w-36"/>
-        <PazhLogoTypo width={146}/>
+        <PazhLogo className="h-28 w-28 sm:h-36 sm:w-36" />
+        <PazhLogoTypo width={146} />
         <div className="mt-4 flex h-auto w-full flex-col items-center justify-start gap-3 sm:mt-5">
           <div className="w-full">
             <label htmlFor="phoneNumber" className="mb-2 block text-sm sm:text-base text-(--teal-tertiary)">
@@ -44,6 +89,8 @@ const LoginPage = () => {
                 id="phoneNumber"
                 name="phoneNumber"
                 type="tel"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
                 placeholder="۰۹۱۲۳۴۵۶۷۸۹"
                 className="h-full w-full rounded-xl border border-(--app-border) bg-(--white) pr-14 pl-4 text-sm sm:text-base text-(--black) outline-none transition focus:border-(--teal-primary)"
               />
@@ -111,6 +158,8 @@ const LoginPage = () => {
                 id="password"
                 name="password"
                 type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 placeholder="رمز عبور خود را وارد کنید"
                 className="h-full w-full rounded-xl border border-(--app-border) bg-(--white) pr-14 pl-12 text-sm sm:text-base text-(--black) outline-none transition focus:border-(--teal-primary)"
               />
@@ -119,7 +168,14 @@ const LoginPage = () => {
 
           <span className="text-sm text-(--teal-tertiary) underline sm:text-base">درخواست فراموشی رمز عبور</span>
 
-          <button type="button" onClick={handleLogin} className="h-12 w-full rounded-xl bg-(--teal-primary) text-(--white) font-medium sm:h-14">ورود</button>
+          <button
+            type="button"
+            onClick={handleLogin}
+            disabled={loading}
+            className="h-12 w-full rounded-xl bg-(--teal-primary) text-(--white) font-medium disabled:opacity-70 sm:h-14"
+          >
+            {loading ? "در حال ورود..." : "ورود"}
+          </button>
 
           <div className="mt-2 flex w-full items-center justify-between gap-3">
             <div className="">
@@ -129,13 +185,19 @@ const LoginPage = () => {
               <span className="text-xs sm:text-sm text-(--teal-tertiary)">ثبت نام کنید</span>
             </Link>
           </div>
-        </div>   
+        </div>
       </div>
       <div className="w-full h-full flex flex-col justify-around items-center gap-5 pb-1">
-        <div className="flex flex-col justify-center items-center gap-2">
-          <IoMdFingerPrint className="h-9 w-9 text-(--teal-tertiary) sm:h-10 sm:w-10"/>
+        <button
+          type="button"
+          onClick={handleBiometricLogin}
+          disabled={biometricLoading}
+          className="flex flex-col justify-center items-center gap-2 rounded-xl p-2 active:opacity-80 disabled:opacity-60"
+          aria-label="ورود با اثر انگشت"
+        >
+          <IoMdFingerPrint className="h-9 w-9 text-(--teal-tertiary) sm:h-10 sm:w-10" />
           <span className="text-sm text-(--teal-tertiary)">ورود با اثر انگشت</span>
-        </div>
+        </button>
         <div className="w-full flex flex-wrap justify-between items-center gap-y-2">
           <div className="flex justify-center items-center gap-1 text-xs sm:text-sm">
             <span>شماره پشتیبانی:</span>

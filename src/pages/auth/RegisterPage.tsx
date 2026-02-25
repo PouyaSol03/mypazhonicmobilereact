@@ -1,7 +1,9 @@
 import { useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import PazhLogo from "../../assets/logos/PazhLogo"
 import PazhLogoTypo from "../../assets/logos/PazhLogoTypo"
+import toast from "react-hot-toast"
+import { registerUser } from "../../utils/androidBridge"
 
 const LockIcon = () => (
   <svg
@@ -79,8 +81,51 @@ const EyeOffIcon = () => (
 )
 
 const RegisterPage = () => {
+  const navigate = useNavigate()
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [phoneNumber, setPhoneNumber] = useState("")
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [loading, setLoading] = useState(false)
+
+  const handleRegister = async () => {
+    const phone = phoneNumber.trim()
+    const first = firstName.trim()
+    const last = lastName.trim()
+    const pass = password.trim()
+    const confirm = confirmPassword.trim()
+    if (!phone || !pass) {
+      toast.error("شماره موبایل و رمز عبور الزامی هستند")
+      return
+    }
+    if (pass !== confirm) {
+      toast.error("رمز عبور و تکرار آن یکسان نیستند")
+      return
+    }
+    setLoading(true)
+    try {
+      const fullName = [first, last].filter(Boolean).join(" ").trim() || undefined
+      const result = registerUser({
+        userName: phone,
+        phoneNumber: phone,
+        password: pass,
+        fullName: fullName || undefined,
+        firstName: first || undefined,
+        lastName: last || undefined,
+      })
+      if (result.success) {
+        toast.success("کاربر با موفقیت ایجاد شد")
+        navigate("/")
+      } else {
+        toast.error(result.error || "ثبت نام ناموفق بود")
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="flex h-full w-full max-w-md flex-col items-center justify-center gap-6 px-4 py-4">
@@ -101,6 +146,8 @@ const RegisterPage = () => {
                 id="phoneNumber"
                 name="phoneNumber"
                 type="tel"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
                 placeholder="۰۹۱۲۳۴۵۶۷۸۹"
                 className="h-full w-full rounded-xl border border-(--app-border) bg-(--white) pr-14 pl-4 text-sm sm:text-base text-(--black) outline-none transition focus:border-(--teal-primary)"
               />
@@ -120,6 +167,8 @@ const RegisterPage = () => {
                 id="firstName"
                 name="firstName"
                 type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
                 placeholder="نام خود را وارد کنید"
                 className="h-full w-full rounded-xl border border-(--app-border) bg-(--white) pr-14 pl-4 text-sm sm:text-base text-(--black) outline-none transition focus:border-(--teal-primary)"
               />
@@ -139,6 +188,8 @@ const RegisterPage = () => {
                 id="lastName"
                 name="lastName"
                 type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
                 placeholder="نام خانوادگی خود را وارد کنید"
                 className="h-full w-full rounded-xl border border-(--app-border) bg-(--white) pr-14 pl-4 text-sm sm:text-base text-(--black) outline-none transition focus:border-(--teal-primary)"
               />
@@ -166,6 +217,8 @@ const RegisterPage = () => {
                 id="password"
                 name="password"
                 type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 placeholder="رمز عبور خود را وارد کنید"
                 className="h-full w-full rounded-xl border border-(--app-border) bg-(--white) pr-14 pl-12 text-sm sm:text-base text-(--black) outline-none transition focus:border-(--teal-primary)"
               />
@@ -193,14 +246,21 @@ const RegisterPage = () => {
                 id="confirmPassword"
                 name="confirmPassword"
                 type={showConfirmPassword ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="رمز عبور را مجدد وارد کنید"
                 className="h-full w-full rounded-xl border border-(--app-border) bg-(--white) pr-14 pl-12 text-sm sm:text-base text-(--black) outline-none transition focus:border-(--teal-primary)"
               />
             </div>
           </div>
 
-          <button type="submit" className="h-12 w-full rounded-xl bg-(--teal-primary) text-(--white) font-medium sm:h-14">
-            ثبت نام
+          <button
+            type="button"
+            onClick={handleRegister}
+            disabled={loading}
+            className="h-12 w-full rounded-xl bg-(--teal-primary) text-(--white) font-medium disabled:opacity-70 sm:h-14"
+          >
+            {loading ? "در حال ثبت نام..." : "ثبت نام"}
           </button>
 
           <div className="mt-2 flex w-full items-center justify-between gap-3">

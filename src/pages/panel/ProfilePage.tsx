@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { logout, setStoredToken } from '../../utils/androidBridge'
 import {
   IoPersonCircleOutline,
   IoCallOutline,
@@ -35,8 +37,15 @@ type SettingsRow = {
 type Theme = 'light' | 'dark'
 
 function ProfilePage() {
+  const navigate = useNavigate()
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [theme, setTheme] = useState<Theme>('light')
+
+  const handleLogout = () => {
+    logout()
+    setStoredToken(null)
+    navigate('/', { replace: true })
+  }
 
   const infoSection: SettingsRow[] = [
     { id: 'phone', icon: <IoCallOutline className="h-5 w-5" />, label: 'شماره تلفن', value: DEMO_PROFILE.phone },
@@ -227,6 +236,7 @@ function ProfilePage() {
         <section className="mt-4">
           <button
             type="button"
+            onClick={handleLogout}
             className="flex w-full items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-3 py-3.5 font-medium text-red-600 transition active:scale-[0.99] active:bg-red-100"
           >
             <IoLogOutOutline className="h-5 w-5" aria-hidden />

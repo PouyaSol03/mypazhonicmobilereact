@@ -1,4 +1,6 @@
 import { createHashRouter, Navigate } from 'react-router-dom'
+import { RedirectIfAuth } from '../components/auth/RedirectIfAuth'
+import { RequireAuth } from '../components/auth/RequireAuth'
 import { MobileLayout } from '../layouts/MobileLayout'
 import { NotFoundPage } from '../pages/NotFoundPage'
 import LoginPage from '../pages/auth/LoginPage'
@@ -12,15 +14,27 @@ import SettingsPage from '../pages/panel/SettingsPage'
 export const router = createHashRouter([
   {
     path: '/',
-    element: <LoginPage />
+    element: (
+      <RedirectIfAuth>
+        <LoginPage />
+      </RedirectIfAuth>
+    )
   },
   {
     path: '/register',
-    element: <RegisterPage />
+    element: (
+      <RedirectIfAuth>
+        <RegisterPage />
+      </RedirectIfAuth>
+    )
   },
   {
     path: '/app',
-    element: <MobileLayout />,
+    element: (
+      <RequireAuth>
+        <MobileLayout />
+      </RequireAuth>
+    ),
     children: [
       { index: true, element: <Navigate to="/app/home" replace /> },
       { path: 'home', element: <PanelListPage /> },

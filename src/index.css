@@ -53,6 +53,12 @@ body {
   font-family: "Vazirmatn", Inter, system-ui, sans-serif;
 }
 
+/* react-hot-toast: RTL + app font, top-center */
+.pazhonic-toast {
+  direction: rtl;
+  font-family: "Vazirmatn", Inter, system-ui, sans-serif;
+}
+
 .iphone-bg-element {
   position: absolute;
   filter: blur(100px);

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   IoFingerPrintOutline,
   IoNotificationsOutline,
@@ -12,6 +12,7 @@ import {
   IoLockClosedOutline,
   IoCloudOutline,
 } from 'react-icons/io5'
+import { getBiometricEnabled, setBiometricEnabled } from '../../utils/androidBridge'
 
 const APP_VERSION = '1.0.0 (۱۴۰۳)'
 
@@ -25,7 +26,17 @@ type SettingsRow = {
 }
 
 function SettingsPage() {
-  const [biometricEnabled, setBiometricEnabled] = useState(true)
+  const [biometricEnabled, setBiometricEnabledState] = useState(false)
+
+  useEffect(() => {
+    setBiometricEnabledState(getBiometricEnabled())
+  }, [])
+
+  const handleBiometricToggle = (next: boolean) => {
+    setBiometricEnabledState(next)
+    setBiometricEnabled(next)
+  }
+
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
 
   const sections: Array<{ title: string; rows: SettingsRow[] }> = [
@@ -90,7 +101,7 @@ function SettingsPage() {
   const renderSwitch = (switchId: 'biometric' | 'notifications') => {
     const isOn = switchId === 'biometric' ? biometricEnabled : notificationsEnabled
     const toggle = () => {
-      if (switchId === 'biometric') setBiometricEnabled((v) => !v)
+      if (switchId === 'biometric') handleBiometricToggle(!biometricEnabled)
       else setNotificationsEnabled((v) => !v)
     }
     return (
@@ -98,6 +109,7 @@ function SettingsPage() {
         type="button"
         role="switch"
         aria-checked={isOn}
+        aria-label={switchId === 'biometric' ? (isOn ? 'ورود با بیومتریک فعال' : 'ورود با بیومتریک غیرفعال') : (isOn ? 'اعلان‌ها روشن' : 'اعلان‌ها خاموش')}
         onClick={(e) => {
           e.stopPropagation()
           toggle()

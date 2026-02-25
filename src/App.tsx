@@ -1,9 +1,26 @@
+import { Toaster } from 'react-hot-toast'
 import { RouterProvider } from 'react-router-dom'
 import { router } from './app/router'
+
+const toastFontFamily = '"Vazirmatn", Inter, system-ui, sans-serif'
 
 function App() {
   return (
     <div className="w-full h-full">
+      <Toaster
+        position="top-center"
+        containerClassName="pazhonic-toast"
+        containerStyle={{
+          direction: 'rtl',
+          fontFamily: toastFontFamily,
+        }}
+        toastOptions={{
+          style: {
+            fontFamily: toastFontFamily,
+            direction: 'rtl',
+          },
+        }}
+      />
       <div className="relative h-full w-full overflow-hidden bg-white md:hidden">
         {/* <div className="pointer-events-none absolute inset-0" aria-hidden="true">
           <div className="iphone-bg-element iphone-bg-cyan-1" />
