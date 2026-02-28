@@ -1,92 +1,91 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   IoClose,
   IoPersonOutline,
-  IoGlobeOutline,
   IoCallOutline,
   IoLocationOutline,
   IoKeyOutline,
+  IoDownloadOutline,
 } from 'react-icons/io5'
 import { FormInput } from './ui/FormInput'
 import { PANEL_ICONS } from '../constants/panelIcons'
 import { FormButton } from './ui/FormButton'
 import { FormSearchSelect, type SearchSelectOption } from './ui/FormSearchSelect'
-
-const PROVINCE_OPTIONS: SearchSelectOption[] = [
-  { value: 'tehran', label: 'تهران' },
-  { value: 'isfahan', label: 'اصفهان' },
-  { value: 'fars', label: 'فارس' },
-  { value: 'khorsan-r', label: 'خراسان رضوی' },
-  { value: 'azerbaijan-s', label: 'آذربایجان شرقی' },
-  { value: 'azerbaijan-w', label: 'آذربایجان غربی' },
-  { value: 'khozestan', label: 'خوزستان' },
-  { value: 'mazandaran', label: 'مازندران' },
-  { value: 'gilan', label: 'گیلان' },
-  { value: 'qom', label: 'قم' },
-  { value: 'markazi', label: 'مرکزی' },
-  { value: 'kerman', label: 'کرمان' },
-  { value: 'hamedan', label: 'همدان' },
-  { value: 'yazd', label: 'یزد' },
-  { value: 'kermanshah', label: 'کرمانشاه' },
-  { value: 'golestan', label: 'گلستان' },
-  { value: 'semnan', label: 'سمنان' },
-  { value: 'qazvin', label: 'قزوین' },
-  { value: 'zanjan', label: 'زنجان' },
-  { value: 'ardebil', label: 'اردبیل' },
-]
-
-const CITY_OPTIONS: SearchSelectOption[] = [
-  { value: 'tehran', label: 'تهران' },
-  { value: 'isfahan', label: 'اصفهان' },
-  { value: 'mashhad', label: 'مشهد' },
-  { value: 'shiraz', label: 'شیراز' },
-  { value: 'tabriz', label: 'تبریز' },
-  { value: 'ahvaz', label: 'اهواز' },
-  { value: 'qom', label: 'قم' },
-  { value: 'kermanshah', label: 'کرمانشاه' },
-  { value: 'karaj', label: 'کرج' },
-  { value: 'arak', label: 'اراک' },
-  { value: 'hamedan', label: 'همدان' },
-  { value: 'yazd', label: 'یزد' },
-  { value: 'rasht', label: 'رشت' },
-  { value: 'sari', label: 'ساری' },
-  { value: 'zahedan', label: 'زاهدان' },
-  { value: 'kerman', label: 'کرمان' },
-  { value: 'qazvin', label: 'قزوین' },
-  { value: 'zanjan', label: 'زنجان' },
-  { value: 'ardebil', label: 'اردبیل' },
-  { value: 'urmia', label: 'ارومیه' },
-]
+import toast from 'react-hot-toast'
+import { getLocationsByType, getCitiesByStateId, getSerialNumber } from '../utils/androidBridge'
 
 interface CreatePanelSheetProps {
   open: boolean
   onClose: () => void
+  /** When set, sheet is in edit mode (title and submit label change). */
+  initialData?: Partial<CreatePanelFormData> & { id?: string }
   onSubmit?: (data: CreatePanelFormData) => void
 }
 
 export interface CreatePanelFormData {
   name: string
   ip: string
+  port: string
   phone: string
   province: string
   city: string
   udlCode: string
   avatar: string
+  serialNumber: string
 }
 
 const initialForm: CreatePanelFormData = {
   name: '',
   ip: '',
+  port: '',
   phone: '',
   province: '',
   city: '',
   udlCode: '',
   avatar: PANEL_ICONS[0].value,
+  serialNumber: '',
 }
 
-export function CreatePanelSheet({ open, onClose, onSubmit }: CreatePanelSheetProps) {
+export function CreatePanelSheet({ open, onClose, initialData, onSubmit }: CreatePanelSheetProps) {
   const [form, setForm] = useState<CreatePanelFormData>(initialForm)
+  const [downloading, setDownloading] = useState(false)
+  const [serialError, setSerialError] = useState<string | null>(null)
+  const isEdit = Boolean(initialData?.id)
+
+  useEffect(() => {
+    if (open && initialData) {
+      setForm({
+        name: initialData.name ?? '',
+        ip: initialData.ip ?? '',
+        port: initialData.port ?? '',
+        phone: initialData.phone ?? '',
+        province: initialData.province ?? '',
+        city: initialData.city ?? '',
+        udlCode: initialData.udlCode ?? '',
+        avatar: initialData.avatar ?? PANEL_ICONS[0].value,
+        serialNumber: initialData.serialNumber ?? '',
+      })
+    } else if (open && !initialData) {
+      setForm(initialForm)
+    }
+  }, [open, initialData])
+
+  const provinceOptions = useMemo<SearchSelectOption[]>(() => {
+    const { locations } = getLocationsByType('STATE')
+    return locations.map((l) => ({ value: String(l.id), label: l.name }))
+  }, [])
+
+  const [cityOptions, setCityOptions] = useState<SearchSelectOption[]>([])
+
+  useEffect(() => {
+    if (!form.province) {
+      setCityOptions([])
+      return
+    }
+    const { locations } = getCitiesByStateId(form.province)
+    setCityOptions(locations.map((l) => ({ value: String(l.id), label: l.name })))
+  }, [form.province])
 
   const handleChange = (field: keyof CreatePanelFormData) => (
     e: React.ChangeEvent<HTMLInputElement>
@@ -96,6 +95,7 @@ export function CreatePanelSheet({ open, onClose, onSubmit }: CreatePanelSheetPr
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    if (!isEdit && !form.serialNumber.trim()) return
     onSubmit?.(form)
     setForm(initialForm)
     onClose()
@@ -103,6 +103,34 @@ export function CreatePanelSheet({ open, onClose, onSubmit }: CreatePanelSheetPr
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) onClose()
+  }
+
+  const handleDownloadSerial = () => {
+    if (!form.udlCode.trim()) {
+      console.warn('[getSerialNumber] validation: codeUD is empty')
+      toast.error('کد آپلود دانلود (UDL) را وارد کنید')
+      return
+    }
+    if (!form.ip.trim() || !form.port.trim()) {
+      console.warn('[getSerialNumber] validation: ip or port is empty')
+      toast.error('آی‌پی و پورت را وارد کنید')
+      return
+    }
+    setSerialError(null)
+    setDownloading(true)
+    console.log('[getSerialNumber] request:', { codeUD: form.udlCode, ip: form.ip, port: form.port })
+    const result = getSerialNumber(form.udlCode, form.ip, form.port)
+    setDownloading(false)
+    if (result.error) {
+      console.error('[getSerialNumber] error:', result.error)
+      setSerialError(result.error)
+      toast.error(result.error)
+    } else {
+      console.log('[getSerialNumber] success:', { serialNumber: result.serialNumber })
+      setForm((prev) => ({ ...prev, serialNumber: result.serialNumber ?? '' }))
+      setSerialError(null)
+      toast.success('شماره سریال دریافت شد')
+    }
   }
 
   return (
@@ -135,7 +163,7 @@ export function CreatePanelSheet({ open, onClose, onSubmit }: CreatePanelSheetPr
           >
             <div className="flex shrink-0 items-center justify-between border-b border-(--app-border)/70 px-4 py-3">
               <h2 id="create-panel-title" className="text-lg font-semibold text-(--black)">
-                افزودن پنل جدید
+                {isEdit ? 'ویرایش پنل' : 'افزودن پنل جدید'}
               </h2>
               <button
                 type="button"
@@ -189,17 +217,101 @@ export function CreatePanelSheet({ open, onClose, onSubmit }: CreatePanelSheetPr
                 inputClassName="h-full w-full rounded-xl border border-(--app-border) bg-(--white) pr-14 pl-4 text-sm text-(--black) outline-none transition focus:border-(--teal-primary)"
               />
               <FormInput
-                id="panel-ip"
-                label="آی‌پی"
+                id="panel-udl"
+                label="کد UDL (کد آپلود دانلود)"
                 type="text"
-                placeholder="مثال: 192.168.1.1"
-                value={form.ip}
-                onChange={handleChange('ip')}
-                icon={<IoGlobeOutline className="h-5 w-5" aria-hidden />}
+                placeholder="کد UDL"
+                value={form.udlCode}
+                onChange={handleChange('udlCode')}
+                icon={<IoKeyOutline className="h-5 w-5" aria-hidden />}
                 containerClassName="w-full"
                 labelClassName="mb-2 block text-sm text-(--teal-tertiary)"
                 inputClassName="h-full w-full rounded-xl border border-(--app-border) bg-(--white) pr-14 pl-4 text-sm text-(--black) outline-none transition focus:border-(--teal-primary)"
               />
+              {/* آی‌پی و پورت در یک ردیف */}
+              <div className="w-full">
+                <label className="mb-2 block text-sm text-(--teal-tertiary)">
+                  آی‌پی و پورت
+                </label>
+                <div className="flex h-14 w-full overflow-hidden rounded-xl border border-(--app-border) bg-(--white) transition focus-within:border-(--teal-primary)">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="مثال: 192.168.1.1"
+                    value={form.ip}
+                    onChange={(e) => setForm((prev) => ({ ...prev, ip: e.target.value }))}
+                    className="min-w-0 flex-1 bg-transparent px-4 text-sm text-(--black) outline-none placeholder:text-(--teal-tertiary)/70"
+                    aria-label="آی‌پی"
+                  />
+                  <span className="w-px shrink-0 bg-(--app-border)" aria-hidden />
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="پورت"
+                    value={form.port}
+                    onChange={(e) => setForm((prev) => ({ ...prev, port: e.target.value.replace(/\D/g, '') }))}
+                    className="w-20 shrink-0 bg-transparent px-3 text-center text-sm text-(--black) outline-none placeholder:text-(--teal-tertiary)/70"
+                    aria-label="پورت"
+                  />
+                </div>
+              </div>
+              <FormSearchSelect
+                id="panel-province"
+                label="استان"
+                placeholder="استان را انتخاب کنید"
+                value={form.province}
+                onChange={(v) => setForm((prev) => ({ ...prev, province: v, city: '' }))}
+                options={provinceOptions}
+                containerClassName="w-full"
+                labelClassName="mb-2 block text-sm text-(--teal-tertiary)"
+                triggerClassName="h-full w-full rounded-xl border border-(--app-border) bg-(--white) pr-14 pl-4 text-sm text-(--black) outline-none transition focus:border-(--teal-primary) text-right flex items-center"
+                icon={<IoLocationOutline className="h-5 w-5" aria-hidden />}
+              />
+              <FormSearchSelect
+                id="panel-city"
+                label="شهر"
+                placeholder="شهر را انتخاب کنید"
+                value={form.city}
+                onChange={(v) => setForm((prev) => ({ ...prev, city: v }))}
+                options={cityOptions}
+                containerClassName="w-full"
+                labelClassName="mb-2 block text-sm text-(--teal-tertiary)"
+                triggerClassName="h-full w-full rounded-xl border border-(--app-border) bg-(--white) pr-14 pl-4 text-sm text-(--black) outline-none transition focus:border-(--teal-primary) text-right flex items-center"
+                icon={<IoLocationOutline className="h-5 w-5" aria-hidden />}
+              />
+              {/* شماره سریال پنل — دکمه دریافت از پنل در سمت چپ */}
+              <div className="w-full">
+                <label htmlFor="panel-serial" className="mb-2 block text-sm text-(--teal-tertiary)">
+                  شماره سریال پنل <span className="text-red-500">*</span>
+                  {serialError && (
+                    <span className="mr-2 text-xs text-red-500">({serialError})</span>
+                  )}
+                </label>
+                <div className="flex h-14 w-full overflow-hidden rounded-xl border border-(--app-border) bg-(--white) transition focus-within:border-(--teal-primary)">
+                  <button
+                    type="button"
+                    title="دریافت از پنل"
+                    onClick={handleDownloadSerial}
+                    disabled={downloading}
+                    className="flex shrink-0 items-center justify-center border-l border-(--app-border) bg-(--teal-tertiary)/10 px-3 text-(--teal-primary) transition hover:bg-(--teal-primary)/10 disabled:opacity-50"
+                    aria-label="دریافت شماره سریال از پنل"
+                  >
+                    {downloading ? (
+                      <span className="text-xs">...</span>
+                    ) : (
+                      <IoDownloadOutline className="h-6 w-6" />
+                    )}
+                  </button>
+                  <input
+                    id="panel-serial"
+                    type="text"
+                    placeholder="شماره سریال را وارد کنید یا از پنل دریافت کنید"
+                    value={form.serialNumber}
+                    onChange={(e) => setForm((prev) => ({ ...prev, serialNumber: e.target.value }))}
+                    className="min-w-0 flex-1 bg-transparent px-4 text-sm text-(--black) outline-none placeholder:text-(--teal-tertiary)/70"
+                  />
+                </div>
+              </div>
               <FormInput
                 id="panel-phone"
                 label="شماره تماس"
@@ -212,47 +324,11 @@ export function CreatePanelSheet({ open, onClose, onSubmit }: CreatePanelSheetPr
                 labelClassName="mb-2 block text-sm text-(--teal-tertiary)"
                 inputClassName="h-full w-full rounded-xl border border-(--app-border) bg-(--white) pr-14 pl-4 text-sm text-(--black) outline-none transition focus:border-(--teal-primary)"
               />
-              <FormSearchSelect
-                id="panel-province"
-                label="استان"
-                placeholder="استان را انتخاب کنید"
-                value={form.province}
-                onChange={(v) => setForm((prev) => ({ ...prev, province: v }))}
-                options={PROVINCE_OPTIONS}
-                containerClassName="w-full"
-                labelClassName="mb-2 block text-sm text-(--teal-tertiary)"
-                triggerClassName="h-full w-full rounded-xl border border-(--app-border) bg-(--white) pr-14 pl-4 text-sm text-(--black) outline-none transition focus:border-(--teal-primary) text-right flex items-center"
-                icon={<IoLocationOutline className="h-5 w-5" aria-hidden />}
-              />
-              <FormSearchSelect
-                id="panel-city"
-                label="شهر"
-                placeholder="شهر را انتخاب کنید"
-                value={form.city}
-                onChange={(v) => setForm((prev) => ({ ...prev, city: v }))}
-                options={CITY_OPTIONS}
-                containerClassName="w-full"
-                labelClassName="mb-2 block text-sm text-(--teal-tertiary)"
-                triggerClassName="h-full w-full rounded-xl border border-(--app-border) bg-(--white) pr-14 pl-4 text-sm text-(--black) outline-none transition focus:border-(--teal-primary) text-right flex items-center"
-                icon={<IoLocationOutline className="h-5 w-5" aria-hidden />}
-              />
-              <FormInput
-                id="panel-udl"
-                label="کد UDL"
-                type="text"
-                placeholder="کد UDL"
-                value={form.udlCode}
-                onChange={handleChange('udlCode')}
-                icon={<IoKeyOutline className="h-5 w-5" aria-hidden />}
-                containerClassName="w-full"
-                labelClassName="mb-2 block text-sm text-(--teal-tertiary)"
-                inputClassName="h-full w-full rounded-xl border border-(--app-border) bg-(--white) pr-14 pl-4 text-sm text-(--black) outline-none transition focus:border-(--teal-primary)"
-              />
               <FormButton
                 type="submit"
                 className="mt-2 h-12 w-full rounded-xl bg-(--teal-primary) text-(--white) font-medium py-2"
               >
-                ثبت پنل
+                {isEdit ? 'ذخیره تغییرات' : 'ثبت پنل'}
               </FormButton>
             </form>
           </motion.div>

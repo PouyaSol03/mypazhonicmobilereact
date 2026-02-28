@@ -19,6 +19,7 @@ declare global {
       getLocationsByType(type: string): string
       getLocationsByParentId(parentId: string): string
       getLocationsByTypeAndParent(type: string, parentId: string): string
+      getCitiesByStateId(stateId: string): string
       /** Panels & folders (current user). */
       getPanelsForUser(): string
       getPanelsByFolder(folderIdJson: string): string
@@ -26,10 +27,13 @@ declare global {
       updatePanel(panelJson: string): string
       deletePanel(panelId: string): string
       setPanelFolder(panelId: string, folderId: string): string
+      setPanelLastStatus(panelId: string, lastStatus: string): string
       getFolders(): string
       createFolder(name: string): string
       updateFolder(folderId: string, name: string): string
       deleteFolder(folderId: string): string
+      /** Get panel serial number via TCP. codeUD, ip, port (string). Returns JSON { serialNumber } or { error }. */
+      getSerialNumber(codeUD: string, ip: string, port: string): string
       onReactReady?(): void
     }
   }
@@ -61,6 +65,8 @@ export type BridgePanel = {
   isActive: boolean
   locationId: number | null
   codeUD: string | null
+  /** Last alarm status from panel: "ARM" | "DISARM", null when never connected. */
+  lastStatus: string | null
   createdAt: number
   updatedAt: number
 }
@@ -195,6 +201,13 @@ export function getLocationsByParentId(parentId: string): LocationsResult {
   const bridge = getBridge()
   if (!bridge) return { locations: [] }
   return parseLocationsResponse(bridge.getLocationsByParentId(parentId))
+}
+
+/** Get all cities under a state (State → County → City). */
+export function getCitiesByStateId(stateId: string): LocationsResult {
+  const bridge = getBridge()
+  if (!bridge) return { locations: [] }
+  return parseLocationsResponse(bridge.getCitiesByStateId(stateId))
 }
 
 /** Get locations of given type with specific parent (e.g. type "STATE", parentId "1"). */
@@ -346,6 +359,19 @@ export function setPanelFolder(panelId: string | number, folderId: string | numb
   }
 }
 
+/** Set last alarm status (e.g. "ARM", "DISARM") after connecting to panel. */
+export function setPanelLastStatus(panelId: string | number, lastStatus: string): { success: boolean; error?: string } {
+  const bridge = getBridge()
+  if (!bridge) return { success: false, error: 'Bridge not available' }
+  try {
+    const json = bridge.setPanelLastStatus(String(panelId), lastStatus)
+    const data = JSON.parse(json) as { success?: boolean; error?: string }
+    return { success: !!data.success, error: data.error }
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
 export function getFolders(): FoldersResult {
   const bridge = getBridge()
   if (!bridge) return { folders: [] }
@@ -385,5 +411,33 @@ export function deleteFolder(folderId: string | number): { success: boolean; err
     return { success: !!data.success, error: data.error }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+/** Result of getSerialNumber: either serial number or error. */
+export type GetSerialNumberResult =
+  | { serialNumber: string; error?: undefined }
+  | { serialNumber: null; error: string }
+
+/** Get panel serial number from device via TCP. Requires codeUD, ip, port (from CreatePanel form). */
+export function getSerialNumber(
+  codeUD: string,
+  ip: string,
+  port: string | number
+): GetSerialNumberResult {
+  const bridge = getBridge()
+  if (!bridge?.getSerialNumber) return { serialNumber: null, error: 'پل در دسترس نیست' }
+  try {
+    const portStr = typeof port === 'number' ? String(port) : String(port).trim()
+    const raw = bridge.getSerialNumber(codeUD.trim(), ip.trim(), portStr)
+    const data = JSON.parse(raw) as { serialNumber?: string | null; error?: string }
+    if (data.error) return { serialNumber: null, error: data.error }
+    if (data.serialNumber != null && data.serialNumber !== '') {
+      return { serialNumber: data.serialNumber }
+    }
+    return { serialNumber: null, error: 'پاسخ نامعتبر' }
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e)
+    return { serialNumber: null, error: message }
   }
 }

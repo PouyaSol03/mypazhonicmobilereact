@@ -69,7 +69,11 @@ export default function PanelConnectionPage() {
             <div className="flex items-center gap-3 border-b border-(--app-border)/70 px-3 py-3">
               <div
                 className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${
-                  panel.status === 'online' ? 'bg-green-500/10 text-green-700' : 'bg-red-500/10 text-red-700'
+                  panel.lastStatus === 'ARM'
+                    ? 'bg-green-500/10 text-green-700'
+                    : panel.lastStatus === 'DISARM'
+                      ? 'bg-amber-500/10 text-amber-700'
+                      : 'bg-(--teal-tertiary)/10 text-(--teal-tertiary)'
                 }`}
               >
                 <FaBuilding className="h-6 w-6" aria-hidden />
@@ -77,10 +81,11 @@ export default function PanelConnectionPage() {
               <div className="min-w-0 flex-1 text-right">
                 <p className="font-medium text-(--black)">{panel.name}</p>
                 <p className="text-xs text-(--teal-tertiary)">
-                  {panel.status === 'online' ? 'آنلاین' : 'آفلاین'}
-                  {panel.unreadCount != null && panel.unreadCount > 0 && (
-                    <> · {toPersianDigits(panel.unreadCount)} اعلان</>
-                  )}
+                  {panel.lastStatus === 'ARM'
+                    ? 'مسلح'
+                    : panel.lastStatus === 'DISARM'
+                      ? 'غیرمسلح'
+                      : 'هنوز متصل نشده'}
                 </p>
               </div>
             </div>

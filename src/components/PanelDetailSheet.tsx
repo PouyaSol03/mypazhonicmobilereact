@@ -15,9 +15,14 @@ export interface PanelDetail {
   name: string
   ip: string
   phone: string
-  status: 'online' | 'offline'
-  unreadCount?: number
   folderId?: number | null
+  /** Last alarm status from panel: ARM / DISARM; null when never connected. */
+  lastStatus?: 'ARM' | 'DISARM' | null
+}
+
+const LAST_STATUS_LABEL: Record<'ARM' | 'DISARM', string> = {
+  ARM: 'مسلح',
+  DISARM: 'غیرمسلح',
 }
 
 export interface FolderOption {
@@ -109,6 +114,18 @@ export function PanelDetailSheet({
             </div>
 
             <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pb-8 pt-2">
+              {/* وضعیت آخر پنل (مسلح / غیرمسلح) */}
+              <section className="w-full">
+                <h3 className="mb-2 text-sm font-medium text-(--teal-tertiary)">وضعیت پنل</h3>
+                <div className="rounded-xl border border-(--app-border) bg-(--white) px-3 py-2.5 text-right">
+                  <span className="font-medium text-(--black)">
+                    {panel.lastStatus != null
+                      ? LAST_STATUS_LABEL[panel.lastStatus]
+                      : 'هنوز متصل نشده'}
+                  </span>
+                </div>
+              </section>
+
               {/* پوشه (دسته) */}
               {folders.length > 0 && onSetFolder && (
                 <section className="w-full">
