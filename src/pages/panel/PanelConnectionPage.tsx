@@ -4,6 +4,7 @@ import { FaBuilding } from 'react-icons/fa'
 import { toPersianDigits } from '../../utils/digits'
 import type { PanelDetail } from '../../components/PanelDetailSheet'
 import PanelSMSPage from './PanelSMSPage'
+import WifiConnectionPage from './WifiConnectionPage'
 
 const WAY_LABELS: Record<string, { label: string; Icon: React.ComponentType<{ className?: string }> }> = {
   sms: { label: 'اتصال از طریق SMS', Icon: IoChatbubbleOutline },
@@ -21,6 +22,10 @@ export default function PanelConnectionPage() {
     return <PanelSMSPage />
   }
 
+  if (way === 'wifi') {
+    return <WifiConnectionPage panel={panel} />
+  }
+
   const wayConfig = way ? WAY_LABELS[way] : null
 
   if (!panel || !wayConfig) {
@@ -30,7 +35,7 @@ export default function PanelConnectionPage() {
         <button
           type="button"
           onClick={() => navigate('/app/home')}
-          className="rounded-xl bg-(--teal-primary) px-4 py-2 text-white"
+          className="rounded-xl bg-(--teal-primary) px-4 py-2 text-(--app-on-primary)"
         >
           بازگشت به لیست پنل‌ها
         </button>

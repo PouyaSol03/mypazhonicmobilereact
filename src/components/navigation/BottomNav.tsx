@@ -25,9 +25,9 @@ export function BottomNav() {
   const location = useLocation()
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-10 flex justify-center px-4 pb-4 pt-2 pointer-events-none [&>nav]:pointer-events-auto">
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-10 flex justify-center px-3 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] pt-2 [&>nav]:pointer-events-auto">
       <nav
-        className="mx-auto max-w-md flex items-center justify-center gap-1 rounded-4xl border border-(--app-border) bg-(--surface-light) px-1 py-1 shadow-lg"
+        className="mx-auto flex w-full max-w-[24rem] items-center justify-center gap-1 rounded-3xl border border-(--app-border) bg-(--surface-light) px-1 py-1 shadow-lg"
         aria-label="ناوبری پایین"
       >
         {navItems.map((item) => (
@@ -39,9 +39,9 @@ export function BottomNav() {
                 ? item.isActive(isActive ? { pathname: location.pathname } : null, { pathname: location.pathname })
                 : isActive
               const activeClass = resolvedActive
-                ? 'bg-(--app-primary) text-(--white)'
+                ? 'bg-(--app-primary) text-(--app-on-primary)'
                 : 'text-(--teal-tertiary) hover:bg-(--app-gradient-start)'
-              return `flex flex-col items-center justify-center gap-1 rounded-3xl px-6 py-2 text-center text-xs font-medium transition ${activeClass}`
+              return `flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-center text-xs font-medium transition ${activeClass}`
             }}
           >
             {({ isActive }) => {

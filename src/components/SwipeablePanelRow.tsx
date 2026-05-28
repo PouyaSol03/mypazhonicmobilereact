@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from 'react'
+import { useRef, useCallback, useEffect } from 'react'
 import { motion, useAnimationControls } from 'framer-motion'
 import { IoPencilOutline, IoTrashOutline } from 'react-icons/io5'
 
@@ -22,38 +22,38 @@ export function SwipeablePanelRow({
   onOpenChange,
 }: SwipeablePanelRowProps) {
   const controls = useAnimationControls()
-  const [dragOffset, setDragOffset] = useState(0)
+  const dragOffsetRef = useRef(0)
   const startXRef = useRef(0)
   const startOffsetRef = useRef(0)
   const didDragRef = useRef(false)
 
   const openActions = useCallback(() => {
     controls.start({ x: -ACTION_WIDTH })
-    setDragOffset(-ACTION_WIDTH)
+    dragOffsetRef.current = -ACTION_WIDTH
     onOpenChange?.(true)
   }, [controls, onOpenChange])
 
   const closeActions = useCallback(() => {
     controls.start({ x: 0 })
-    setDragOffset(0)
+    dragOffsetRef.current = 0
     onOpenChange?.(false)
   }, [controls, onOpenChange])
 
   useEffect(() => {
     if (!isOpen) {
       controls.start({ x: 0 })
-      setDragOffset(0)
+      dragOffsetRef.current = 0
     }
   }, [isOpen, controls])
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
       startXRef.current = e.clientX
-      startOffsetRef.current = dragOffset
+      startOffsetRef.current = dragOffsetRef.current
       didDragRef.current = false
       ;(e.target as HTMLElement).setPointerCapture?.(e.pointerId)
     },
-    [dragOffset]
+    []
   )
 
   const handlePointerMove = useCallback(
@@ -61,20 +61,20 @@ export function SwipeablePanelRow({
       const delta = e.clientX - startXRef.current
       if (Math.abs(delta) > DRAG_THRESHOLD) didDragRef.current = true
       const next = Math.min(0, Math.max(-ACTION_WIDTH, startOffsetRef.current + delta))
-      setDragOffset(next)
+      dragOffsetRef.current = next
       controls.set({ x: next })
     },
     [controls]
   )
 
   const handlePointerUp = useCallback(() => {
-    const shouldOpen = dragOffset < -SNAP_THRESHOLD
+    const shouldOpen = dragOffsetRef.current < -SNAP_THRESHOLD
     if (shouldOpen) {
       openActions()
     } else {
       closeActions()
     }
-  }, [dragOffset, openActions, closeActions])
+  }, [openActions, closeActions])
 
   const handleRowClick = useCallback((e: React.MouseEvent) => {
     if (didDragRef.current) {
@@ -96,10 +96,9 @@ export function SwipeablePanelRow({
           onClick={(e) => {
             e.stopPropagation()
             closeActions()
-            setDragOffset(0)
             onEdit()
           }}
-          className="flex flex-1 items-center justify-center gap-1.5 px-4 py-2 bg-(--teal-primary)/90 text-white transition active:bg-(--teal-primary)"
+          className="flex flex-1 items-center justify-center gap-1.5 px-4 py-2 bg-(--teal-primary)/90 text-(--app-on-primary) transition active:bg-(--teal-primary)"
           aria-label="ویرایش پنل"
         >
           <IoPencilOutline className="h-5 w-5 shrink-0" />
@@ -110,7 +109,6 @@ export function SwipeablePanelRow({
           onClick={(e) => {
             e.stopPropagation()
             closeActions()
-            setDragOffset(0)
             onDelete()
           }}
           className="flex flex-1 items-center justify-center gap-1.5 px-4 py-2 bg-red-500/90 text-white transition active:bg-red-600"

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createElement, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { IoSearchOutline, IoPencilOutline, IoTrashOutline } from 'react-icons/io5'
@@ -14,7 +14,8 @@ import 'react-swipeable-list/dist/styles.css'
 import { FloatingCreatePanelButton } from '../../components/FloatingCreatePanelButton'
 import { CreatePanelSheet } from '../../components/CreatePanelSheet'
 import { PanelDetailSheet, type PanelDetail } from '../../components/PanelDetailSheet'
-import { useHeaderSearch } from '../../contexts/HeaderSearchContext'
+import { useHeaderSearch } from '../../hooks/useHeaderSearch'
+import { appToast } from '../../utils/appToast'
 import { getPanelIcon } from '../../constants/panelIcons'
 import {
   getPanelsForUser,
@@ -95,7 +96,7 @@ function PanelAvatar({
       aria-hidden
     >
       <span className="text-lg font-semibold">
-        <Icon className="h-6 w-6" aria-hidden />
+        {createElement(Icon, { className: 'h-6 w-6', 'aria-hidden': true })}
       </span>
     </div>
   )
@@ -105,8 +106,8 @@ const PanelListPage = () => {
   const navigate = useNavigate()
   const headerSearch = useHeaderSearch()
   const [showSearch, setShowSearch] = useState(true)
-  const [panels, setPanels] = useState<Panel[]>([])
-  const [folders, setFolders] = useState<BridgeFolder[]>([])
+  const [panels, setPanels] = useState<Panel[]>(() => getPanelsForUser().panels.map(bridgePanelToPanel))
+  const [folders] = useState<BridgeFolder[]>(() => getFolders().folders)
   const [searchQuery, setSearchQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState<CategoryId>('all')
   const [createSheetOpen, setCreateSheetOpen] = useState(false)
@@ -124,17 +125,6 @@ const PanelListPage = () => {
     if (error) return
     setPanels(list.map(bridgePanelToPanel))
   }, [])
-
-  const refetchFolders = useCallback(() => {
-    const { folders: list, error } = getFolders()
-    if (error) return
-    setFolders(list)
-  }, [])
-
-  useEffect(() => {
-    refetchPanels()
-    refetchFolders()
-  }, [refetchPanels, refetchFolders])
 
   const categories = useMemo(() => {
     const items: { id: CategoryId; label: string }[] = [
@@ -235,7 +225,7 @@ const PanelListPage = () => {
                   type="button"
                   onClick={() => setActiveCategory(cat.id)}
                   className={`w-full rounded-full border px-3 py-1 text-xs font-medium transition-all duration-200 text-nowrap ${isActive
-                    ? 'border-(--teal-primary)/40 bg-(--teal-primary) text-black shadow-sm'
+                    ? 'border-(--teal-primary)/40 bg-(--teal-primary) text-(--app-on-primary) shadow-sm'
                     : 'border-(--teal-tertiary)/80 bg-(--teal-tertiary)/30 text-black hover:border-(--teal-primary)/25 hover:bg-(--app-gradient-start)/40'
                     }`}
                 >
@@ -269,13 +259,12 @@ const PanelListPage = () => {
                       setCreateSheetOpen(true)
                     }}
                   >
-                    <span className="flex h-full w-full min-w-18 items-center justify-center gap-1.5 bg-(--teal-primary) px-4 py-2 text-white">
+                    <span className="flex h-full w-full min-w-18 items-center justify-center gap-1.5 bg-(--teal-primary) px-4 py-2 text-(--app-on-primary)">
                       <IoPencilOutline className="h-5 w-5 shrink-0" />
                       <span className="text-xs font-medium">ویرایش</span>
                     </span>
                   </SwipeAction>
                   <SwipeAction
-                    destructive
                     onClick={() => setDeleteConfirmPanel({ id: panel.id, name: panel.name })}
                   >
                     <span className="flex h-full w-full min-w-18 items-center justify-center gap-1.5 bg-red-500 px-4 py-2 text-white">
@@ -350,8 +339,9 @@ const PanelListPage = () => {
                   const result = deletePanel(panel.id)
                   if (result.success) {
                     setPanels((prev) => prev.filter((p) => p.id !== panel.id))
+                    appToast.success({ title: 'پنل حذف شد', message: `پنل «${panel.name}» از فهرست حذف شد.` })
                   } else if (result.error) {
-                    window.alert(result.error)
+                    appToast.error({ title: 'حذف پنل ناموفق', message: result.error })
                   }
                 }}
                 className="flex-1 rounded-xl bg-red-500 py-2.5 text-sm font-medium text-white"
@@ -365,6 +355,7 @@ const PanelListPage = () => {
 
       <FloatingCreatePanelButton onClick={() => { setEditingPanel(null); setCreateSheetOpen(true) }} />
       <CreatePanelSheet
+        key={editingPanel ? `edit-${editingPanel.id}` : createSheetOpen ? 'create-open' : 'create-closed'}
         open={createSheetOpen}
         onClose={() => {
           setCreateSheetOpen(false)
@@ -407,7 +398,11 @@ const PanelListPage = () => {
               refetchPanels()
               setCreateSheetOpen(false)
               setEditingPanel(null)
-            } else if (result.error) window.alert(result.error)
+              appToast.success({ title: 'پنل ویرایش شد', message: 'تغییرات پنل ذخیره شد.' })
+              return true
+            }
+            if (result.error) appToast.error({ title: 'ویرایش پنل ناموفق', message: result.error })
+            return false
           } else {
             const result = createPanel({
               name: data.name,
@@ -422,7 +417,11 @@ const PanelListPage = () => {
             if (result.success) {
               refetchPanels()
               setCreateSheetOpen(false)
-            } else if (result.error) window.alert(result.error)
+              appToast.success({ title: 'پنل ثبت شد', message: 'پنل جدید به فهرست شما اضافه شد.' })
+              return true
+            }
+            if (result.error) appToast.error({ title: 'ثبت پنل ناموفق', message: result.error })
+            return false
           }
         }}
       />
@@ -438,7 +437,14 @@ const PanelListPage = () => {
           setDetailSheetOpen(false)
           setDetailPanel(null)
         }}
-        onEdit={(p) => console.log('Edit panel:', p)}
+        onEdit={(p) => {
+          const panel = panels.find((item) => item.id === p.id)
+          if (!panel) return
+          setDetailSheetOpen(false)
+          setDetailPanel(null)
+          setEditingPanel(panel)
+          setCreateSheetOpen(true)
+        }}
         onDelete={(p) => {
           setDetailSheetOpen(false)
           setDetailPanel(null)
@@ -447,8 +453,10 @@ const PanelListPage = () => {
         folders={[{ id: null, name: 'بدون پوشه' }, ...folders]}
         onSetFolder={(panelId, folderId) => {
           const result = setPanelFolder(panelId, folderId ?? '')
-          if (result.success) refetchPanels()
-          else if (result.error) window.alert(result.error)
+          if (result.success) {
+            refetchPanels()
+            appToast.success({ title: 'پوشه پنل تغییر کرد' })
+          } else if (result.error) appToast.error({ title: 'تغییر پوشه ناموفق', message: result.error })
         }}
       />
     </div>

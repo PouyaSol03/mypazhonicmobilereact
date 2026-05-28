@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   IoClose,
@@ -12,15 +12,15 @@ import { FormInput } from './ui/FormInput'
 import { PANEL_ICONS } from '../constants/panelIcons'
 import { FormButton } from './ui/FormButton'
 import { FormSearchSelect, type SearchSelectOption } from './ui/FormSearchSelect'
-import toast from 'react-hot-toast'
 import { getLocationsByType, getCitiesByStateId, getSerialNumber } from '../utils/androidBridge'
+import { appToast } from '../utils/appToast'
 
 interface CreatePanelSheetProps {
   open: boolean
   onClose: () => void
   /** When set, sheet is in edit mode (title and submit label change). */
   initialData?: Partial<CreatePanelFormData> & { id?: string }
-  onSubmit?: (data: CreatePanelFormData) => void
+  onSubmit?: (data: CreatePanelFormData) => boolean | void
 }
 
 export interface CreatePanelFormData {
@@ -47,44 +47,36 @@ const initialForm: CreatePanelFormData = {
   serialNumber: '',
 }
 
+function createInitialForm(initialData?: Partial<CreatePanelFormData>): CreatePanelFormData {
+  if (!initialData) return initialForm
+  return {
+    name: initialData.name ?? '',
+    ip: initialData.ip ?? '',
+    port: initialData.port ?? '',
+    phone: initialData.phone ?? '',
+    province: initialData.province ?? '',
+    city: initialData.city ?? '',
+    udlCode: initialData.udlCode ?? '',
+    avatar: initialData.avatar ?? PANEL_ICONS[0].value,
+    serialNumber: initialData.serialNumber ?? '',
+  }
+}
+
 export function CreatePanelSheet({ open, onClose, initialData, onSubmit }: CreatePanelSheetProps) {
-  const [form, setForm] = useState<CreatePanelFormData>(initialForm)
+  const [form, setForm] = useState<CreatePanelFormData>(() => createInitialForm(initialData))
   const [downloading, setDownloading] = useState(false)
   const [serialError, setSerialError] = useState<string | null>(null)
   const isEdit = Boolean(initialData?.id)
-
-  useEffect(() => {
-    if (open && initialData) {
-      setForm({
-        name: initialData.name ?? '',
-        ip: initialData.ip ?? '',
-        port: initialData.port ?? '',
-        phone: initialData.phone ?? '',
-        province: initialData.province ?? '',
-        city: initialData.city ?? '',
-        udlCode: initialData.udlCode ?? '',
-        avatar: initialData.avatar ?? PANEL_ICONS[0].value,
-        serialNumber: initialData.serialNumber ?? '',
-      })
-    } else if (open && !initialData) {
-      setForm(initialForm)
-    }
-  }, [open, initialData])
 
   const provinceOptions = useMemo<SearchSelectOption[]>(() => {
     const { locations } = getLocationsByType('STATE')
     return locations.map((l) => ({ value: String(l.id), label: l.name }))
   }, [])
 
-  const [cityOptions, setCityOptions] = useState<SearchSelectOption[]>([])
-
-  useEffect(() => {
-    if (!form.province) {
-      setCityOptions([])
-      return
-    }
+  const cityOptions = useMemo<SearchSelectOption[]>(() => {
+    if (!form.province) return []
     const { locations } = getCitiesByStateId(form.province)
-    setCityOptions(locations.map((l) => ({ value: String(l.id), label: l.name })))
+    return locations.map((l) => ({ value: String(l.id), label: l.name }))
   }, [form.province])
 
   const handleChange = (field: keyof CreatePanelFormData) => (
@@ -96,7 +88,8 @@ export function CreatePanelSheet({ open, onClose, initialData, onSubmit }: Creat
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!isEdit && !form.serialNumber.trim()) return
-    onSubmit?.(form)
+    const saved = onSubmit?.(form)
+    if (saved === false) return
     setForm(initialForm)
     onClose()
   }
@@ -107,29 +100,24 @@ export function CreatePanelSheet({ open, onClose, initialData, onSubmit }: Creat
 
   const handleDownloadSerial = () => {
     if (!form.udlCode.trim()) {
-      console.warn('[getSerialNumber] validation: codeUD is empty')
-      toast.error('کد آپلود دانلود (UDL) را وارد کنید')
+      appToast.warning({ title: 'اطلاعات ناقص است', message: 'کد آپلود دانلود (UDL) را وارد کنید.' })
       return
     }
     if (!form.ip.trim() || !form.port.trim()) {
-      console.warn('[getSerialNumber] validation: ip or port is empty')
-      toast.error('آی‌پی و پورت را وارد کنید')
+      appToast.warning({ title: 'اطلاعات ناقص است', message: 'آی پی و پورت را وارد کنید.' })
       return
     }
     setSerialError(null)
     setDownloading(true)
-    console.log('[getSerialNumber] request:', { codeUD: form.udlCode, ip: form.ip, port: form.port })
     const result = getSerialNumber(form.udlCode, form.ip, form.port)
     setDownloading(false)
     if (result.error) {
-      console.error('[getSerialNumber] error:', result.error)
       setSerialError(result.error)
-      toast.error(result.error)
+      appToast.error({ title: 'دریافت سریال ناموفق', message: result.error })
     } else {
-      console.log('[getSerialNumber] success:', { serialNumber: result.serialNumber })
       setForm((prev) => ({ ...prev, serialNumber: result.serialNumber ?? '' }))
       setSerialError(null)
-      toast.success('شماره سریال دریافت شد')
+      appToast.success({ title: 'شماره سریال دریافت شد', message: 'اطلاعات پنل آماده ثبت است.' })
     }
   }
 
@@ -150,7 +138,7 @@ export function CreatePanelSheet({ open, onClose, initialData, onSubmit }: Creat
             role="dialog"
             aria-modal="true"
             aria-labelledby="create-panel-title"
-            className="fixed inset-x-0 bottom-0 z-40 flex max-h-[94vh] flex-col rounded-t-3xl border-t border-(--app-border) bg-(--surface-light) shadow-2xl"
+            className="fixed inset-x-0 bottom-0 z-40 mx-auto flex w-full max-w-[42rem] flex-col rounded-t-3xl border-t border-(--app-border) bg-(--surface-light) shadow-2xl max-h-[94vh]"
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
@@ -179,8 +167,9 @@ export function CreatePanelSheet({ open, onClose, initialData, onSubmit }: Creat
             </div>
             <form
               onSubmit={handleSubmit}
-              className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-8 pt-2"
+              className="flex min-h-0 flex-1 flex-col"
             >
+              <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-4 pb-4 pt-2">
               {/* انتخاب آیکون پنل */}
               <div className="w-full">
                 <label className="mb-2 block text-sm text-(--teal-tertiary)">
@@ -324,12 +313,15 @@ export function CreatePanelSheet({ open, onClose, initialData, onSubmit }: Creat
                 labelClassName="mb-2 block text-sm text-(--teal-tertiary)"
                 inputClassName="h-full w-full rounded-xl border border-(--app-border) bg-(--white) pr-14 pl-4 text-sm text-(--black) outline-none transition focus:border-(--teal-primary)"
               />
-              <FormButton
-                type="submit"
-                className="mt-2 h-12 w-full rounded-xl bg-(--teal-primary) text-(--white) font-medium py-2"
-              >
-                {isEdit ? 'ذخیره تغییرات' : 'ثبت پنل'}
-              </FormButton>
+              </div>
+              <div className="shrink-0 border-t border-(--app-border)/70 bg-(--surface-light) px-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] pt-3">
+                <FormButton
+                  type="submit"
+                  className="h-12 w-full rounded-xl bg-(--teal-primary) py-2 font-medium text-(--app-on-primary)"
+                >
+                  {isEdit ? 'ذخیره تغییرات' : 'ثبت پنل'}
+                </FormButton>
+              </div>
             </form>
           </motion.div>
         </>

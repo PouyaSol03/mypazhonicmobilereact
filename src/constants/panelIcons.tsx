@@ -1,5 +1,6 @@
 import { FaBuilding, FaHome, FaStore, FaWarehouse, FaIndustry } from 'react-icons/fa'
 
+/* eslint-disable react-refresh/only-export-components -- Icon constructors are shared metadata, not hot-reload boundaries. */
 export const PANEL_ICONS = [
   { value: 'building', label: 'ساختمان', Icon: FaBuilding },
   { value: 'home', label: 'خانه', Icon: FaHome },

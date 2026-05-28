@@ -6,7 +6,7 @@ interface FormButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const defaultClassName =
-  'h-12 w-full rounded-xl bg-(--teal-primary) text-(--white) font-medium sm:h-14 disabled:opacity-50 transition'
+  'h-12 w-full rounded-xl bg-(--teal-primary) text-(--app-on-primary) font-medium sm:h-14 disabled:opacity-50 transition'
 
 export function FormButton({
   children,

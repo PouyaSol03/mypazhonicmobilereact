@@ -24,10 +24,7 @@ export function StoryScreen({ open, onClose }: StoryScreenProps) {
   const [activeSegment, setActiveSegment] = useState(0)
 
   useEffect(() => {
-    if (!open) {
-      setActiveSegment(0)
-      return
-    }
+    if (!open) return
     const t = setInterval(() => {
       setActiveSegment((prev) => {
         if (prev >= STORY_SEGMENTS - 1) {

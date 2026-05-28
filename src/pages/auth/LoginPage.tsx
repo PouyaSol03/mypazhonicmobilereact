@@ -4,9 +4,9 @@ import PazhLogo from "../../assets/logos/PazhLogo"
 import PazhLogoTypo from "../../assets/logos/PazhLogoTypo"
 import { IoMdFingerPrint } from "react-icons/io"
 import { toPersianDigits } from "../../utils/digits"
-import toast from "react-hot-toast"
-import { useAuth } from "../../contexts/AuthContext"
+import { useAuth } from "../../hooks/useAuth"
 import { login, getBiometricEnabled, loginWithBiometric } from "../../utils/androidBridge"
+import { appToast } from "../../utils/appToast"
 
 const LoginPage = () => {
   const navigate = useNavigate()
@@ -29,7 +29,7 @@ const LoginPage = () => {
     const phone = phoneNumber.trim()
     const pass = password.trim()
     if (!phone || !pass) {
-      toast.error("شماره موبایل و رمز عبور را وارد کنید")
+      appToast.warning({ title: "اطلاعات ورود ناقص است", message: "شماره موبایل و رمز عبور را وارد کنید." })
       return
     }
     setLoading(true)
@@ -37,10 +37,10 @@ const LoginPage = () => {
       const result = login(phone, pass)
       if (result.success && result.token) {
         setSession(result.token, result.user)
-        toast.success("ورود با موفقیت انجام شد")
+        appToast.success({ title: "خوش آمدید", message: "ورود شما با موفقیت انجام شد." })
         navigate("/app/home")
       } else {
-        toast.error(result.error || "ورود ناموفق بود")
+        appToast.error({ title: "ورود ناموفق", message: result.error || "اطلاعات ورود صحیح نیست." })
       }
     } finally {
       setLoading(false)
@@ -54,10 +54,10 @@ const LoginPage = () => {
       setBiometricLoading(false)
       if (result.success && result.token) {
         setSession(result.token, result.user)
-        toast.success("ورود با موفقیت انجام شد")
+        appToast.success({ title: "خوش آمدید", message: "ورود با اثر انگشت با موفقیت انجام شد." })
         navigate("/app/home")
       } else {
-        toast.error(result.error || "ورود با اثر انگشت ناموفق بود")
+        appToast.error({ title: "ورود ناموفق", message: result.error || "ورود با اثر انگشت انجام نشد." })
       }
     })
   }

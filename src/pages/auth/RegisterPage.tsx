@@ -2,8 +2,8 @@ import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import PazhLogo from "../../assets/logos/PazhLogo"
 import PazhLogoTypo from "../../assets/logos/PazhLogoTypo"
-import toast from "react-hot-toast"
 import { registerUser } from "../../utils/androidBridge"
+import { appToast } from "../../utils/appToast"
 
 const LockIcon = () => (
   <svg
@@ -98,11 +98,11 @@ const RegisterPage = () => {
     const pass = password.trim()
     const confirm = confirmPassword.trim()
     if (!phone || !pass) {
-      toast.error("شماره موبایل و رمز عبور الزامی هستند")
+      appToast.warning({ title: "اطلاعات ثبت نام ناقص است", message: "شماره موبایل و رمز عبور الزامی هستند." })
       return
     }
     if (pass !== confirm) {
-      toast.error("رمز عبور و تکرار آن یکسان نیستند")
+      appToast.warning({ title: "رمز عبور هماهنگ نیست", message: "رمز عبور و تکرار آن باید یکسان باشند." })
       return
     }
     setLoading(true)
@@ -117,10 +117,10 @@ const RegisterPage = () => {
         lastName: last || undefined,
       })
       if (result.success) {
-        toast.success("کاربر با موفقیت ایجاد شد")
+        appToast.success({ title: "ثبت نام انجام شد", message: "اکنون می توانید وارد حساب خود شوید." })
         navigate("/")
       } else {
-        toast.error(result.error || "ثبت نام ناموفق بود")
+        appToast.error({ title: "ثبت نام ناموفق", message: result.error || "ایجاد حساب انجام نشد." })
       }
     } finally {
       setLoading(false)

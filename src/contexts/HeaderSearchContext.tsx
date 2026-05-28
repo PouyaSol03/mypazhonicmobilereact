@@ -1,13 +1,5 @@
-import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react'
-
-interface HeaderSearchContextValue {
-  showHeaderSearch: boolean
-  setHeaderSearch: (show: boolean, onSearchClick?: () => void) => void
-  scrollToTopRef: React.MutableRefObject<(() => void) | null>
-  onHeaderSearchClick: () => void
-}
-
-const HeaderSearchContext = createContext<HeaderSearchContextValue | null>(null)
+import { useCallback, useRef, useState, type ReactNode } from 'react'
+import { HeaderSearchContext, type HeaderSearchContextValue } from './headerSearchState'
 
 export function HeaderSearchProvider({ children }: { children: ReactNode }) {
   const [showHeaderSearch, setShowHeaderSearch] = useState(false)
@@ -19,6 +11,10 @@ export function HeaderSearchProvider({ children }: { children: ReactNode }) {
     onClickRef.current = onSearchClick ?? null
   }, [])
 
+  const setScrollToTop = useCallback((callback: (() => void) | null) => {
+    scrollToTopRef.current = callback
+  }, [])
+
   const onHeaderSearchClick = useCallback(() => {
     scrollToTopRef.current?.()
     onClickRef.current?.()
@@ -27,7 +23,7 @@ export function HeaderSearchProvider({ children }: { children: ReactNode }) {
   const value: HeaderSearchContextValue = {
     showHeaderSearch,
     setHeaderSearch,
-    scrollToTopRef,
+    setScrollToTop,
     onHeaderSearchClick,
   }
 
@@ -36,8 +32,4 @@ export function HeaderSearchProvider({ children }: { children: ReactNode }) {
       {children}
     </HeaderSearchContext.Provider>
   )
-}
-
-export function useHeaderSearch() {
-  return useContext(HeaderSearchContext)
 }

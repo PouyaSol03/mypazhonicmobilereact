@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../../contexts/AuthContext'
+import { useAuth } from '../../hooks/useAuth'
+import { useAppTheme } from '../../hooks/useAppTheme'
+import { getBooleanPreference, setPreference } from '../../utils/androidBridge'
+import { appToast } from '../../utils/appToast'
 import {
   IoPersonCircleOutline,
   IoCallOutline,
@@ -22,17 +25,15 @@ type SettingsRow = {
   icon: React.ReactNode
   label: string
   value?: string
-  href?: string
+  detailRoute?: string
   danger?: boolean
 }
-
-type Theme = 'light' | 'dark'
 
 function ProfilePage() {
   const navigate = useNavigate()
   const { user, refreshUser, logout: authLogout } = useAuth()
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true)
-  const [theme, setTheme] = useState<Theme>('light')
+  const { theme, toggleTheme } = useAppTheme()
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => getBooleanPreference('notifications', true))
 
   useEffect(() => {
     refreshUser()
@@ -41,6 +42,17 @@ function ProfilePage() {
   const handleLogout = () => {
     authLogout()
     navigate('/', { replace: true })
+  }
+
+  const handleNotificationsToggle = () => {
+    const next = !notificationsEnabled
+    const result = setPreference('notifications', next)
+    if (!result.success) {
+      appToast.error({ title: 'ذخیره تنظیمات ناموفق', message: result.error })
+      return
+    }
+    setNotificationsEnabled(next)
+    appToast.success({ title: 'اعلان ها', message: next ? 'اعلان های برنامه روشن شد.' : 'اعلان های برنامه خاموش شد.' })
   }
 
   const displayName =
@@ -64,14 +76,14 @@ function ProfilePage() {
     {
       title: 'حریم خصوصی و امنیت',
       rows: [
-        { id: 'privacy', icon: <IoLockClosedOutline className="h-5 w-5" />, label: 'حریم خصوصی' },
-        { id: 'security', icon: <IoLockClosedOutline className="h-5 w-5" />, label: 'امنیت' },
+        { id: 'privacy', icon: <IoLockClosedOutline className="h-5 w-5" />, label: 'حریم خصوصی', detailRoute: '/app/profile/privacy' },
+        { id: 'security', icon: <IoLockClosedOutline className="h-5 w-5" />, label: 'امنیت', detailRoute: '/app/profile/security' },
       ],
     },
     {
       title: 'داده و ذخیره',
       rows: [
-        { id: 'storage', icon: <IoCloudOutline className="h-5 w-5" />, label: 'فضای ذخیره و داده' },
+        { id: 'storage', icon: <IoCloudOutline className="h-5 w-5" />, label: 'فضای ذخیره و داده', detailRoute: '/app/profile/storage' },
       ],
     },
     {
@@ -94,6 +106,7 @@ function ProfilePage() {
           {/* Avatar — from user or placeholder */}
           <button
             type="button"
+            onClick={() => navigate('/app/profile/edit')}
             className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-(--teal-primary)/30 bg-(--teal-primary)/10 text-(--teal-primary) shadow-md transition active:scale-[0.98]"
             aria-label="تغییر تصویر پروفایل"
           >
@@ -102,7 +115,7 @@ function ProfilePage() {
             ) : (
               <IoPersonCircleOutline className="h-14 w-14" aria-hidden />
             )}
-            <span className="absolute bottom-0 left-0 flex h-8 w-8 items-center justify-center rounded-full border-2 border-(--surface-light) bg-(--teal-primary) text-white">
+            <span className="absolute bottom-0 left-0 flex h-8 w-8 items-center justify-center rounded-full border-2 border-(--surface-light) bg-(--teal-primary) text-(--app-on-primary)">
               <IoCameraOutline className="h-4 w-4" aria-hidden />
             </span>
           </button>
@@ -113,6 +126,7 @@ function ProfilePage() {
           )}
           <button
             type="button"
+            onClick={() => navigate('/app/profile/edit')}
             className="mt-2 flex items-center gap-1.5 text-sm font-medium text-(--teal-primary)"
             aria-label="ویرایش پروفایل"
           >
@@ -140,7 +154,6 @@ function ProfilePage() {
                 <p className="text-xs text-(--teal-tertiary)">{row.label}</p>
                 <p className="font-medium">{row.value ?? '—'}</p>
               </div>
-              <IoChevronForward className="h-5 w-5 shrink-0 rotate-180 text-(--teal-tertiary)" aria-hidden />
             </div>
           ))}
         </section>
@@ -153,74 +166,76 @@ function ProfilePage() {
               {group.title}
             </h2>
             <div className="rounded-2xl border border-(--app-border) bg-(--white) shadow-sm overflow-hidden">
-              {group.rows.map((row, index) => (
-                <button
-                  key={row.id}
-                  type="button"
-                  className={`flex w-full items-center gap-3 px-3 py-3.5 text-right transition active:bg-(--app-gradient-start) ${
-                    index < group.rows.length - 1 ? 'border-b border-(--app-border)/60' : ''
-                  } ${row.danger ? 'text-red-600' : 'text-(--black)'}`}
-                >
-                  <span className={row.danger ? 'text-red-500' : 'text-(--teal-tertiary)'} aria-hidden>
-                    {row.icon}
-                  </span>
-                  <span className="min-w-0 flex-1 font-medium">{row.label}</span>
-                  {row.value && row.id !== 'notifications' && (
-                    <span className="text-sm text-(--teal-tertiary)">{row.value}</span>
-                  )}
-                  {row.id === 'notifications' && (
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={notificationsEnabled ? 'true' : 'false'}
-                      aria-label={notificationsEnabled ? 'اعلان‌ها روشن' : 'اعلان‌ها خاموش'}
-                      title={notificationsEnabled ? 'اعلان‌ها روشن' : 'اعلان‌ها خاموش'}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setNotificationsEnabled((v) => !v)
-                      }}
-                      className={`relative h-7 w-12 shrink-0 rounded-full border-2 transition ${
-                        notificationsEnabled
-                          ? 'border-(--teal-primary) bg-(--teal-primary)'
-                          : 'border-(--app-border) bg-(--app-border)'
-                      }`}
-                    >
-                      <span
-                        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${
-                          notificationsEnabled ? 'right-0.5' : 'left-0.5'
+              {group.rows.map((row, index) => {
+                const className = `flex w-full items-center gap-3 px-3 py-3.5 text-right transition ${
+                  index < group.rows.length - 1 ? 'border-b border-(--app-border)/60' : ''
+                } ${row.danger ? 'text-red-600' : 'text-(--black)'}`
+                const content = (
+                  <>
+                    <span className={row.danger ? 'text-red-500' : 'text-(--teal-tertiary)'} aria-hidden>
+                      {row.icon}
+                    </span>
+                    <span className="min-w-0 flex-1 font-medium">{row.label}</span>
+                    {row.value && row.id !== 'notifications' && (
+                      <span className="text-sm text-(--teal-tertiary)">{row.value}</span>
+                    )}
+                    {row.id === 'notifications' && (
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={notificationsEnabled}
+                        aria-label={notificationsEnabled ? 'اعلان‌ها روشن' : 'اعلان‌ها خاموش'}
+                        title={notificationsEnabled ? 'اعلان‌ها روشن' : 'اعلان‌ها خاموش'}
+                        onClick={handleNotificationsToggle}
+                        className={`relative h-7 w-12 shrink-0 rounded-full border-2 transition ${
+                          notificationsEnabled
+                            ? 'border-(--teal-primary) bg-(--teal-primary)'
+                            : 'border-(--app-border) bg-(--app-border)'
                         }`}
-                      />
-                    </button>
-                  )}
-                  {row.id === 'theme' && (
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={theme === 'dark' ? 'true' : 'false'}
-                      aria-label={theme === 'dark' ? 'تم تاریک' : 'تم روشن'}
-                      title={theme === 'dark' ? 'تم تاریک' : 'تم روشن'}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setTheme((t) => (t === 'light' ? 'dark' : 'light'))
-                      }}
-                      className={`relative h-7 w-12 shrink-0 rounded-full border-2 transition ${
-                        theme === 'dark'
-                          ? 'border-(--teal-primary) bg-(--teal-primary)'
-                          : 'border-(--app-border) bg-(--app-border)'
-                      }`}
-                    >
-                      <span
-                        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${
-                          theme === 'dark' ? 'right-0.5' : 'left-0.5'
+                      >
+                        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${notificationsEnabled ? 'right-0.5' : 'left-0.5'}`} />
+                      </button>
+                    )}
+                    {row.id === 'theme' && (
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={theme === 'dark'}
+                        aria-label={theme === 'dark' ? 'تم تاریک' : 'تم روشن'}
+                        title={theme === 'dark' ? 'تم تاریک' : 'تم روشن'}
+                        onClick={toggleTheme}
+                        className={`relative h-7 w-12 shrink-0 rounded-full border-2 transition ${
+                          theme === 'dark'
+                            ? 'border-(--teal-primary) bg-(--teal-primary)'
+                            : 'border-(--app-border) bg-(--app-border)'
                         }`}
-                      />
+                      >
+                        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${theme === 'dark' ? 'right-0.5' : 'left-0.5'}`} />
+                      </button>
+                    )}
+                  </>
+                )
+
+                if (row.detailRoute) {
+                  return (
+                    <button
+                      key={row.id}
+                      type="button"
+                      onClick={() => navigate(row.detailRoute as string)}
+                      className={`${className} active:bg-(--app-gradient-start)`}
+                    >
+                      {content}
+                      <IoChevronForward className="h-5 w-5 shrink-0 rotate-180 text-(--teal-tertiary)" aria-hidden />
                     </button>
-                  )}
-                  {row.id !== 'notifications' && row.id !== 'theme' && (
-                    <IoChevronForward className="h-5 w-5 shrink-0 rotate-180 text-(--teal-tertiary)" aria-hidden />
-                  )}
-                </button>
-              ))}
+                  )
+                }
+
+                return (
+                  <div key={row.id} className={className}>
+                    {content}
+                  </div>
+                )
+              })}
             </div>
           </section>
         ))}
@@ -232,6 +247,7 @@ function ProfilePage() {
           </h2>
           <button
             type="button"
+            onClick={() => navigate('/app/profile/invite')}
             className="flex w-full items-center gap-3 rounded-2xl border border-(--app-border) bg-(--white) px-3 py-3.5 text-right shadow-sm transition active:scale-[0.99] active:bg-(--app-gradient-start)"
           >
             <IoShareSocialOutline className="h-5 w-5 text-(--teal-tertiary)" aria-hidden />
@@ -245,7 +261,7 @@ function ProfilePage() {
           <button
             type="button"
             onClick={handleLogout}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-3 py-3.5 font-medium text-red-600 transition active:scale-[0.99] active:bg-red-100"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-red-500/30 bg-red-500/10 px-3 py-3.5 font-medium text-red-600 transition active:scale-[0.99] active:bg-red-500/15"
           >
             <IoLogOutOutline className="h-5 w-5" aria-hidden />
             خروج از حساب

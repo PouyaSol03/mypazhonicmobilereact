@@ -54,14 +54,6 @@ export function FormSearchSelect({
   )
 
   useEffect(() => {
-    if (!open || !triggerRef.current) return
-    const rect = triggerRef.current.getBoundingClientRect()
-    const spaceBelow = window.innerHeight - rect.bottom
-    const spaceAbove = rect.top
-    setOpenAbove(spaceBelow < MIN_SPACE_THRESHOLD && spaceAbove > spaceBelow)
-  }, [open])
-
-  useEffect(() => {
     if (!open) return
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -71,6 +63,16 @@ export function FormSearchSelect({
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [open])
+
+  const toggleOpen = () => {
+    if (!open && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect()
+      const spaceBelow = window.innerHeight - rect.bottom
+      const spaceAbove = rect.top
+      setOpenAbove(spaceBelow < MIN_SPACE_THRESHOLD && spaceAbove > spaceBelow)
+    }
+    setOpen((current) => !current)
+  }
 
   return (
     <div ref={containerRef} className={`relative ${containerClassName}`}>
@@ -89,7 +91,7 @@ export function FormSearchSelect({
         <button
           type="button"
           id={id}
-          onClick={() => setOpen((p) => !p)}
+          onClick={toggleOpen}
           className={triggerClassName}
           aria-haspopup="listbox"
           aria-expanded={open}

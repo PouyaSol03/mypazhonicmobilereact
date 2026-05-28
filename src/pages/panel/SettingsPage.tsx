@@ -1,4 +1,6 @@
-import { useCallback, useState, useEffect } from 'react'
+import { useCallback, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import {
   IoFingerPrintOutline,
   IoNotificationsOutline,
@@ -14,8 +16,10 @@ import {
   IoFolderOutline,
   IoAddOutline,
   IoPencilOutline,
+  IoClose,
 } from 'react-icons/io5'
-import { getBiometricEnabled, setBiometricEnabled, getFolders, createFolder, updateFolder, deleteFolder, type BridgeFolder } from '../../utils/androidBridge'
+import { getBiometricEnabled, setBiometricEnabled, getBooleanPreference, setPreference, getFolders, createFolder, updateFolder, deleteFolder, type BridgeFolder } from '../../utils/androidBridge'
+import { appToast } from '../../utils/appToast'
 
 const APP_VERSION = '1.0.0 (۱۴۰۳)'
 
@@ -26,53 +30,201 @@ type SettingsRow = {
   value?: string
   switchId?: 'biometric' | 'notifications'
   danger?: boolean
+  detailRoute?: string
+}
+
+type FolderEditorMode = 'create' | 'edit'
+
+function FolderEditorSheet({
+  mode,
+  name,
+  error,
+  onNameChange,
+  onClose,
+  onSubmit,
+}: {
+  mode: FolderEditorMode
+  name: string
+  error: string | null
+  onNameChange: (name: string) => void
+  onClose: () => void
+  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void
+}) {
+  const title = mode === 'create' ? 'افزودن پوشه جدید' : 'ویرایش پوشه'
+  const submitLabel = mode === 'create' ? 'ثبت پوشه' : 'ذخیره تغییرات'
+
+  return (
+    <>
+      <motion.div
+        role="presentation"
+        className="fixed inset-0 z-30 bg-black/40"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
+        onClick={onClose}
+      />
+      <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="folder-editor-title"
+        className="fixed inset-x-0 bottom-0 z-40 mx-auto flex w-full max-w-[42rem] flex-col rounded-t-3xl border-t border-(--app-border) bg-(--surface-light) shadow-2xl"
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={{ type: 'tween', duration: 0.36, ease: [0.32, 0.72, 0, 1] }}
+        style={{ willChange: 'transform' }}
+      >
+        <div className="flex shrink-0 items-center justify-between border-b border-(--app-border)/70 px-4 py-3">
+          <h2 id="folder-editor-title" className="text-lg font-semibold text-(--black)">
+            {title}
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-10 w-10 items-center justify-center rounded-full text-(--teal-tertiary) transition hover:bg-(--app-gradient-start)"
+            aria-label="بستن"
+          >
+            <IoClose className="h-6 w-6" />
+          </button>
+        </div>
+        <div className="shrink-0 px-1 py-1">
+          <div className="mx-auto h-1 w-12 rounded-full bg-(--app-border)" aria-hidden />
+        </div>
+        <form
+          onSubmit={onSubmit}
+          className="px-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] pt-3"
+        >
+          <label htmlFor="folder-name" className="mb-2 block text-sm text-(--teal-tertiary)">
+            نام پوشه
+          </label>
+          <div className="flex h-14 w-full items-center rounded-xl border border-(--app-border) bg-(--white) px-4 transition focus-within:border-(--teal-primary)">
+            <IoFolderOutline className="ml-3 h-5 w-5 shrink-0 text-(--teal-tertiary)" aria-hidden />
+            <input
+              id="folder-name"
+              type="text"
+              value={name}
+              onChange={(e) => onNameChange(e.target.value)}
+              autoFocus
+              placeholder="نام پوشه را وارد کنید"
+              className="min-w-0 flex-1 bg-transparent text-sm text-(--black) outline-none placeholder:text-(--teal-tertiary)/70"
+            />
+          </div>
+          {error && (
+            <p className="mt-2 text-sm text-red-500" role="alert">
+              {error}
+            </p>
+          )}
+          <button
+            type="submit"
+            className="mt-4 h-12 w-full rounded-xl bg-(--teal-primary) font-medium text-(--app-on-primary)"
+          >
+            {submitLabel}
+          </button>
+        </form>
+      </motion.div>
+    </>
+  )
 }
 
 function SettingsPage() {
-  const [biometricEnabled, setBiometricEnabledState] = useState(false)
-
-  useEffect(() => {
-    setBiometricEnabledState(getBiometricEnabled())
-  }, [])
+  const navigate = useNavigate()
+  const [biometricEnabled, setBiometricEnabledState] = useState(() => getBiometricEnabled())
 
   const handleBiometricToggle = (next: boolean) => {
     setBiometricEnabledState(next)
     setBiometricEnabled(next)
+    appToast.success({ title: 'ورود بیومتریک', message: next ? 'ورود بیومتریک فعال شد.' : 'ورود بیومتریک غیرفعال شد.' })
   }
 
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true)
-  const [folders, setFoldersState] = useState<BridgeFolder[]>([])
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => getBooleanPreference('notifications', true))
+  const [folders, setFoldersState] = useState<BridgeFolder[]>(() => getFolders().folders)
+  const [folderEditorMode, setFolderEditorMode] = useState<FolderEditorMode | null>(null)
+  const [editingFolder, setEditingFolder] = useState<BridgeFolder | null>(null)
+  const [folderName, setFolderName] = useState('')
+  const [folderEditorError, setFolderEditorError] = useState<string | null>(null)
+  const [folderToDelete, setFolderToDelete] = useState<BridgeFolder | null>(null)
+  const [folderDeleteError, setFolderDeleteError] = useState<string | null>(null)
+
+  const handleNotificationsToggle = (next: boolean) => {
+    const result = setPreference('notifications', next)
+    if (!result.success) {
+      appToast.error({ title: 'ذخیره تنظیمات ناموفق', message: result.error })
+      return
+    }
+    setNotificationsEnabled(next)
+    appToast.success({ title: 'اعلان ها', message: next ? 'اعلان های برنامه روشن شد.' : 'اعلان های برنامه خاموش شد.' })
+  }
 
   const refetchFolders = useCallback(() => {
     const { folders: list, error } = getFolders()
     if (!error) setFoldersState(list)
   }, [])
 
-  useEffect(() => {
-    refetchFolders()
-  }, [refetchFolders])
+  const closeFolderEditor = () => {
+    setFolderEditorMode(null)
+    setEditingFolder(null)
+    setFolderName('')
+    setFolderEditorError(null)
+  }
 
   const handleAddFolder = () => {
-    const name = window.prompt('نام پوشه جدید')
-    if (!name?.trim()) return
-    const result = createFolder(name.trim())
-    if (result.success) refetchFolders()
-    else if (result.error) window.alert(result.error)
+    setFolderName('')
+    setEditingFolder(null)
+    setFolderEditorError(null)
+    setFolderEditorMode('create')
   }
 
   const handleEditFolder = (folder: BridgeFolder) => {
-    const name = window.prompt('نام پوشه', folder.name)
-    if (name == null || name.trim() === '') return
-    const result = updateFolder(folder.id, name.trim())
-    if (result.success) refetchFolders()
-    else if (result.error) window.alert(result.error)
+    setFolderName(folder.name)
+    setEditingFolder(folder)
+    setFolderEditorError(null)
+    setFolderEditorMode('edit')
+  }
+
+  const handleFolderEditorSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const name = folderName.trim()
+    if (!name) {
+      setFolderEditorError('نام پوشه را وارد کنید.')
+      return
+    }
+
+    const result =
+      folderEditorMode === 'edit' && editingFolder
+        ? updateFolder(editingFolder.id, name)
+        : createFolder(name)
+
+    if (result.success) {
+      refetchFolders()
+      closeFolderEditor()
+      appToast.success({
+        title: folderEditorMode === 'edit' ? 'پوشه ویرایش شد' : 'پوشه ایجاد شد',
+        message: 'تغییرات پوشه های پنل ذخیره شد.',
+      })
+    } else {
+      setFolderEditorError(result.error ?? 'ذخیره پوشه انجام نشد.')
+      appToast.error({ title: 'ذخیره پوشه ناموفق', message: result.error })
+    }
   }
 
   const handleDeleteFolder = (folder: BridgeFolder) => {
-    if (!window.confirm(`حذف پوشه «${folder.name}»؟ پنل‌های داخل آن به «بدون پوشه» منتقل می‌شوند.`)) return
-    const result = deleteFolder(folder.id)
-    if (result.success) refetchFolders()
-    else if (result.error) window.alert(result.error)
+    setFolderDeleteError(null)
+    setFolderToDelete(folder)
+  }
+
+  const confirmDeleteFolder = () => {
+    if (!folderToDelete) return
+    const result = deleteFolder(folderToDelete.id)
+    if (result.success) {
+      refetchFolders()
+      setFolderToDelete(null)
+      setFolderDeleteError(null)
+      appToast.success({ title: 'پوشه حذف شد', message: 'پوشه از فهرست پنل ها حذف شد.' })
+    } else {
+      setFolderDeleteError(result.error ?? 'حذف پوشه انجام نشد.')
+      appToast.error({ title: 'حذف پوشه ناموفق', message: result.error })
+    }
   }
 
   const sections: Array<{ title: string; rows: SettingsRow[] }> = [
@@ -111,6 +263,7 @@ function SettingsPage() {
           id: 'ticketing',
           icon: <IoHelpBuoyOutline className="h-5 w-5" />,
           label: 'تیکت و پشتیبانی',
+          detailRoute: '/app/settings/ticketing',
         },
       ],
     },
@@ -118,22 +271,22 @@ function SettingsPage() {
       title: 'نرم‌افزار',
       rows: [
         { id: 'version', icon: <IoCodeSlashOutline className="h-5 w-5" />, label: 'نسخه', value: APP_VERSION },
-        { id: 'about', icon: <IoInformationCircleOutline className="h-5 w-5" />, label: 'درباره ما' },
-        { id: 'logs', icon: <IoDocumentTextOutline className="h-5 w-5" />, label: 'لاگ نرم‌افزار' },
+        { id: 'about', icon: <IoInformationCircleOutline className="h-5 w-5" />, label: 'درباره ما', detailRoute: '/app/settings/about' },
+        { id: 'logs', icon: <IoDocumentTextOutline className="h-5 w-5" />, label: 'لاگ نرم‌افزار', detailRoute: '/app/settings/logs' },
       ],
     },
     {
       title: 'داده و ذخیره',
       rows: [
-        { id: 'storage', icon: <IoCloudOutline className="h-5 w-5" />, label: 'فضای ذخیره و داده' },
-        { id: 'cache', icon: <IoTrashOutline className="h-5 w-5" />, label: 'پاک کردن کش' },
+        { id: 'storage', icon: <IoCloudOutline className="h-5 w-5" />, label: 'فضای ذخیره و داده', detailRoute: '/app/settings/storage' },
+        { id: 'cache', icon: <IoTrashOutline className="h-5 w-5" />, label: 'پاک کردن کش', detailRoute: '/app/settings/cache' },
       ],
     },
     {
       title: 'عمومی',
       rows: [
         { id: 'language', icon: <IoLanguageOutline className="h-5 w-5" />, label: 'زبان', value: 'فارسی' },
-        { id: 'privacy', icon: <IoLockClosedOutline className="h-5 w-5" />, label: 'حریم خصوصی' },
+        { id: 'privacy', icon: <IoLockClosedOutline className="h-5 w-5" />, label: 'حریم خصوصی', detailRoute: '/app/settings/privacy' },
       ],
     },
   ]
@@ -142,7 +295,7 @@ function SettingsPage() {
     const isOn = switchId === 'biometric' ? biometricEnabled : notificationsEnabled
     const toggle = () => {
       if (switchId === 'biometric') handleBiometricToggle(!biometricEnabled)
-      else setNotificationsEnabled((v) => !v)
+      else handleNotificationsToggle(!notificationsEnabled)
     }
     return (
       <button
@@ -227,6 +380,7 @@ function SettingsPage() {
                   <button
                     key={row.id}
                     type="button"
+                    onClick={row.detailRoute ? () => navigate(row.detailRoute as string) : undefined}
                     className={`flex w-full items-center gap-3 px-3 py-3.5 text-right transition active:bg-(--app-gradient-start) ${
                       index < group.rows.length - 1 ? 'border-b border-(--app-border)/60' : ''
                     } ${row.danger ? 'text-red-600' : 'text-(--black)'}`}
@@ -239,7 +393,7 @@ function SettingsPage() {
                       <span className="text-sm text-(--teal-tertiary)">{row.value}</span>
                     )}
                     {row.switchId && renderSwitch(row.switchId)}
-                    {!row.switchId && (
+                    {row.detailRoute && (
                       <IoChevronForward className="h-5 w-5 shrink-0 rotate-180 text-(--teal-tertiary)" aria-hidden />
                     )}
                   </button>
@@ -249,6 +403,82 @@ function SettingsPage() {
           </section>
         ))}
       </main>
+
+      <AnimatePresence>
+        {folderEditorMode && (
+          <FolderEditorSheet
+            mode={folderEditorMode}
+            name={folderName}
+            error={folderEditorError}
+            onNameChange={(name) => {
+              setFolderName(name)
+              setFolderEditorError(null)
+            }}
+            onClose={closeFolderEditor}
+            onSubmit={handleFolderEditorSubmit}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {folderToDelete && (
+          <>
+            <motion.div
+              role="presentation"
+              className="fixed inset-0 z-50 bg-black/50"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => {
+                setFolderToDelete(null)
+                setFolderDeleteError(null)
+              }}
+            />
+            <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="delete-folder-title"
+              className="fixed left-1/2 top-1/2 z-50 w-[min(90vw,22rem)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-(--app-border) bg-(--surface-light) p-4 text-right shadow-2xl"
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
+            >
+              <h2 id="delete-folder-title" className="text-lg font-semibold text-(--black)">
+                حذف پوشه
+              </h2>
+              <p className="mt-2 text-sm text-(--teal-tertiary)">
+                آیا از حذف پوشه «{folderToDelete.name}» اطمینان دارید؟ پنل‌های داخل آن به «بدون پوشه» منتقل می‌شوند.
+              </p>
+              {folderDeleteError && (
+                <p className="mt-2 text-sm text-red-500" role="alert">
+                  {folderDeleteError}
+                </p>
+              )}
+              <div className="mt-4 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFolderToDelete(null)
+                    setFolderDeleteError(null)
+                  }}
+                  className="flex-1 rounded-xl border border-(--app-border) bg-(--white) py-2.5 text-sm font-medium text-(--black)"
+                >
+                  انصراف
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDeleteFolder}
+                  className="flex-1 rounded-xl bg-red-500 py-2.5 text-sm font-medium text-white"
+                >
+                  بله، حذف کن
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

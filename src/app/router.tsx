@@ -1,15 +1,24 @@
+import { lazy, Suspense, type ReactNode } from 'react'
 import { createHashRouter, Navigate } from 'react-router-dom'
 import { RedirectIfAuth } from '../components/auth/RedirectIfAuth'
 import { RequireAuth } from '../components/auth/RequireAuth'
-import { MobileLayout } from '../layouts/MobileLayout'
+import { RouteFallback } from '../components/auth/RouteFallback'
 import { NotFoundPage } from '../pages/NotFoundPage'
 import LoginPage from '../pages/auth/LoginPage'
-import RegisterPage from '../pages/auth/RegisterPage'
+import { MobileLayout } from '../layouts/MobileLayout'
 import PanelListPage from '../pages/panel/PanelListPage'
-import PanelConnectionPage from '../pages/panel/PanelConnectionPage'
-import ExplorePage from '../pages/panel/ExplorePage'
-import ProfilePage from '../pages/panel/ProfilePage'
-import SettingsPage from '../pages/panel/SettingsPage'
+
+const RegisterPage = lazy(() => import('../pages/auth/RegisterPage'))
+const PanelConnectionPage = lazy(() => import('../pages/panel/PanelConnectionPage'))
+const ExplorePage = lazy(() => import('../pages/panel/ExplorePage'))
+const SettingsPage = lazy(() => import('../pages/panel/SettingsPage'))
+const ProfilePage = lazy(() => import('../pages/panel/ProfilePage'))
+const ProfileDetailPage = lazy(() => import('../pages/panel/ProfileDetailPage'))
+const SettingsDetailPage = lazy(() => import('../pages/panel/SettingsDetailPage'))
+
+function loadRoute(element: ReactNode) {
+  return <Suspense fallback={<RouteFallback />}>{element}</Suspense>
+}
 
 export const router = createHashRouter([
   {
@@ -24,7 +33,7 @@ export const router = createHashRouter([
     path: '/register',
     element: (
       <RedirectIfAuth>
-        <RegisterPage />
+        {loadRoute(<RegisterPage />)}
       </RedirectIfAuth>
     )
   },
@@ -38,10 +47,12 @@ export const router = createHashRouter([
     children: [
       { index: true, element: <Navigate to="/app/home" replace /> },
       { path: 'home', element: <PanelListPage /> },
-      { path: 'panel/connect/:way', element: <PanelConnectionPage /> },
-      { path: 'explore', element: <ExplorePage /> },
-      { path: 'settings', element: <SettingsPage /> },
-      { path: 'profile', element: <ProfilePage /> }
+      { path: 'panel/connect/:way/*', element: loadRoute(<PanelConnectionPage />) },
+      { path: 'explore', element: loadRoute(<ExplorePage />) },
+      { path: 'settings', element: loadRoute(<SettingsPage />) },
+      { path: 'settings/:section', element: loadRoute(<SettingsDetailPage />) },
+      { path: 'profile', element: loadRoute(<ProfilePage />) },
+      { path: 'profile/:section', element: loadRoute(<ProfileDetailPage />) }
     ]
   },
   {

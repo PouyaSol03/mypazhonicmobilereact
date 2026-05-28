@@ -26,6 +26,7 @@ import {
 } from 'react-icons/io5'
 import { FaBuilding } from 'react-icons/fa'
 import type { PanelDetail } from '../../components/PanelDetailSheet'
+import { appToast } from '../../utils/appToast'
 
 // Mock last status for SMS (e.g. last reply received from panel)
 const MOCK_LAST_STATUS = 'آخرین وضعیت دریافت شده: ۱۴۰۳/۰۶/۰۱ - ۱۰:۳۲'
@@ -76,7 +77,7 @@ function SwitchListSheet({
             role="dialog"
             aria-modal="true"
             aria-labelledby="switch-sheet-title"
-            className="fixed inset-x-0 bottom-0 z-40 flex max-h-[70vh] flex-col rounded-t-3xl border-t border-(--app-border) bg-(--surface-light) shadow-2xl text-right"
+            className="fixed inset-x-0 bottom-0 z-40 mx-auto flex w-full max-w-[42rem] flex-col rounded-t-3xl border-t border-(--app-border) bg-(--surface-light) shadow-2xl text-right max-h-[70vh]"
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
@@ -99,7 +100,7 @@ function SwitchListSheet({
             <div className="shrink-0 px-1 py-1">
               <div className="mx-auto h-1 w-12 rounded-full bg-(--app-border)" aria-hidden />
             </div>
-            <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-4 pt-2 pb-4">
+            <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] pt-2">
               {items.map((item) =>
                 showConfirmFooter ? (
                   <li key={item.id}>
@@ -162,7 +163,7 @@ function SwitchListSheet({
                   <button
                     type="button"
                     onClick={handleSubmit}
-                    className="flex-1 rounded-xl bg-(--teal-primary) px-3 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-(--teal-secondary)"
+                    className="flex-1 rounded-xl bg-(--teal-primary) px-3 py-2.5 text-sm font-medium text-(--app-on-primary) shadow-sm transition hover:brightness-95"
                   >
                     تأیید
                   </button>
@@ -228,7 +229,7 @@ function DemoSheet({
             dir="rtl"
             role="dialog"
             aria-modal="true"
-            className="fixed inset-x-0 bottom-0 z-40 flex max-h-[80vh] flex-col rounded-t-3xl border-t border-(--app-border) bg-(--surface-light) shadow-2xl text-right"
+            className="fixed inset-x-0 bottom-0 z-40 mx-auto flex w-full max-w-[42rem] flex-col rounded-t-3xl border-t border-(--app-border) bg-(--surface-light) shadow-2xl text-right max-h-[80vh]"
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
@@ -249,7 +250,7 @@ function DemoSheet({
             <div className="shrink-0 px-1 py-1">
               <div className="mx-auto h-1 w-12 rounded-full bg-(--app-border)" aria-hidden />
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 pt-2">{children}</div>
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] pt-2">{children}</div>
           </motion.div>
         </>
       )}
@@ -303,7 +304,7 @@ export default function PanelSMSPage() {
         <button
           type="button"
           onClick={() => navigate('/app/home')}
-          className="rounded-xl bg-(--teal-primary) px-4 py-2 text-white"
+          className="rounded-xl bg-(--teal-primary) px-4 py-2 text-(--app-on-primary)"
         >
           بازگشت به لیست پنل‌ها
         </button>
@@ -509,7 +510,7 @@ export default function PanelSMSPage() {
         onToggle={togglePartition}
         showConfirmFooter
         onConfirm={() => {
-          /* submit partitions (e.g. send to panel) */
+          appToast.success({ title: 'فرمان ارسال شد', message: 'تنظیم وضعیت پارتیشن ها برای پنل ارسال شد.' })
         }}
       />
       <SwitchListSheet
@@ -520,7 +521,7 @@ export default function PanelSMSPage() {
         onToggle={toggleOutput}
         showConfirmFooter
         onConfirm={() => {
-          /* submit outputs (e.g. send to panel) */
+          appToast.success({ title: 'فرمان ارسال شد', message: 'تغییر وضعیت خروجی ها برای پنل ارسال شد.' })
         }}
       />
       <SwitchListSheet
@@ -575,13 +576,18 @@ export default function PanelSMSPage() {
                 <button
                   type="button"
                   onClick={() => {
+                    const command = alarmConfirm
                     setAlarmConfirm(null)
-                    // setAlarmSheetOpen(true)
+                    if (command === 'panic') {
+                      appToast.warning({ title: 'هشدار فعال شد', message: 'فرمان اضطراری برای پنل ارسال شد.' })
+                    } else {
+                      appToast.success({ title: 'آژیر قطع شد', message: 'فرمان قطع آژیر برای پنل ارسال شد.' })
+                    }
                   }}
                   className={`flex-1 rounded-xl px-3 py-2.5 text-sm font-medium text-white shadow-sm transition ${
                     alarmConfirm === 'panic'
                       ? 'bg-pink-500 hover:bg-pink-600'
-                      : 'bg-(--teal-primary) hover:bg-(--teal-secondary)'
+                      : 'bg-(--teal-primary) text-(--app-on-primary) hover:brightness-95'
                   }`}
                 >
                   تأیید
@@ -637,8 +643,11 @@ export default function PanelSMSPage() {
         </p>
         <button
           type="button"
-          className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-(--app-border) bg-(--teal-primary) px-4 py-3 font-medium text-white shadow-sm transition active:scale-[0.99]"
-          onClick={() => setSimSheetOpen(false)}
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-(--app-border) bg-(--teal-primary) px-4 py-3 font-medium text-(--app-on-primary) shadow-sm transition active:scale-[0.99]"
+          onClick={() => {
+            setSimSheetOpen(false)
+            appToast.success({ title: 'درخواست شارژ ثبت شد', message: 'افزایش اعتبار سیم کارت به صورت نمایشی انجام شد.' })
+          }}
         >
           <IoSendOutline className="h-5 w-5" />
           ارسال درخواست شارژ (دمو)

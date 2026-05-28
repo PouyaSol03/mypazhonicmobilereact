@@ -1,6 +1,9 @@
+import { getDevelopmentBridge } from './developmentBridge'
+
 /**
  * Android WebView bridge (window.AndroidBridge).
- * Safe to use in browser: when bridge is missing, methods return null or throw with a clear message.
+ * Vite development mode uses a browser-backed adapter and never calls Android.
+ * Production builds use the injected Android bridge when it is available.
  */
 
 declare global {
@@ -34,10 +37,27 @@ declare global {
       deleteFolder(folderId: string): string
       /** Get panel serial number via TCP. codeUD, ip, port (string). Returns JSON { serialNumber } or { error }. */
       getSerialNumber(codeUD: string, ip: string, port: string): string
+      /** WiFi panel TCP operations. panelJson must include ip, port, serialNumber, codeUD. */
+      wifiSendData(panelJson: string, code: string, tabCode: string): string
+      wifiReceiveData(panelJson: string, code: string, tabCode: string, count: string): string
+      wifiSendCommand(panelJson: string, message: string): string
+      updateProfile(profileJson: string): string
+      changePassword(currentPassword: string, newPassword: string): string
+      getPreference(key: string, defaultValue: string): string
+      setPreference(key: string, value: string): string
+      sendSupportTicket(subject: string, message: string): string
+      clearAppCache(): string
+      copyText(text: string): string
+      shareText(title: string, text: string): string
+      shareBackup(): string
+      getStorageSummary(): string
+      getActivityLogs(): string
       onReactReady?(): void
     }
   }
 }
+
+export type AndroidBridgeApi = NonNullable<Window['AndroidBridge']>
 
 /** Location item from bridge (id, name, type, parentId, code?, sortOrder). */
 export type BridgeLocation = {
@@ -79,8 +99,18 @@ export type BridgeFolder = {
   sortOrder: number
 }
 
-const getBridge = () => {
-  if (typeof window === 'undefined' || !window.AndroidBridge) return null
+export type BridgeActivityLog = {
+  id: number
+  label: string
+  detail: string
+  tone: 'success' | 'warning' | 'info'
+  timestamp: number
+}
+
+const getBridge = (): AndroidBridgeApi | null => {
+  if (typeof window === 'undefined') return null
+  if (import.meta.env.DEV) return getDevelopmentBridge()
+  if (!window.AndroidBridge) return null
   return window.AndroidBridge
 }
 
@@ -256,7 +286,9 @@ export function loginWithBiometric(
   const cleanup = () => {
     try {
       delete win[callbackName]
-    } catch {}
+    } catch {
+      // The host may expose callback properties that cannot be deleted.
+    }
   }
   win[callbackName] = (jsonStr: string) => {
     cleanup()
@@ -414,6 +446,125 @@ export function deleteFolder(folderId: string | number): { success: boolean; err
   }
 }
 
+type BridgeActionResult = { success: boolean; error?: string }
+
+export type WifiPanelBridgeResult = {
+  success: boolean
+  request?: string
+  response?: string
+  chunks?: string[]
+  chunkCount?: number
+  error?: string
+}
+
+function parseActionResult(raw: string): BridgeActionResult {
+  try {
+    const data = JSON.parse(raw) as BridgeActionResult
+    return { success: !!data.success, error: data.error }
+  } catch {
+    return { success: false, error: 'پاسخ نامعتبر از برنامه میزبان' }
+  }
+}
+
+export function getPreference(key: string, defaultValue = ''): string {
+  const bridge = getBridge()
+  if (!bridge?.getPreference) return defaultValue
+  try {
+    const data = JSON.parse(bridge.getPreference(key, defaultValue)) as { success?: boolean; value?: string }
+    return data.value ?? defaultValue
+  } catch {
+    return defaultValue
+  }
+}
+
+export function getBooleanPreference(key: string, defaultValue: boolean): boolean {
+  return getPreference(key, String(defaultValue)) === 'true'
+}
+
+export function setPreference(key: string, value: string | boolean): BridgeActionResult {
+  const bridge = getBridge()
+  if (!bridge?.setPreference) return { success: false, error: 'Bridge not available' }
+  return parseActionResult(bridge.setPreference(key, String(value)))
+}
+
+export function updateProfile(payload: {
+  fullName: string
+  phoneNumber: string
+  email?: string
+  avatarUrl?: string
+}): { success: boolean; user?: Record<string, unknown>; error?: string } {
+  const bridge = getBridge()
+  if (!bridge?.updateProfile) return { success: false, error: 'Bridge not available' }
+  try {
+    const data = JSON.parse(bridge.updateProfile(JSON.stringify(payload))) as {
+      success?: boolean
+      user?: Record<string, unknown>
+      error?: string
+    }
+    return { success: !!data.success, user: data.user, error: data.error }
+  } catch {
+    return { success: false, error: 'پاسخ نامعتبر از برنامه میزبان' }
+  }
+}
+
+export function changePassword(currentPassword: string, newPassword: string): BridgeActionResult {
+  const bridge = getBridge()
+  if (!bridge?.changePassword) return { success: false, error: 'Bridge not available' }
+  return parseActionResult(bridge.changePassword(currentPassword, newPassword))
+}
+
+export function sendSupportTicket(subject: string, message: string): BridgeActionResult {
+  const bridge = getBridge()
+  if (!bridge?.sendSupportTicket) return { success: false, error: 'Bridge not available' }
+  return parseActionResult(bridge.sendSupportTicket(subject, message))
+}
+
+export function clearAppCache(): BridgeActionResult {
+  const bridge = getBridge()
+  if (!bridge?.clearAppCache) return { success: false, error: 'Bridge not available' }
+  return parseActionResult(bridge.clearAppCache())
+}
+
+export function copyText(text: string): BridgeActionResult {
+  const bridge = getBridge()
+  if (!bridge?.copyText) return { success: false, error: 'Bridge not available' }
+  return parseActionResult(bridge.copyText(text))
+}
+
+export function shareText(title: string, text: string): BridgeActionResult {
+  const bridge = getBridge()
+  if (!bridge?.shareText) return { success: false, error: 'Bridge not available' }
+  return parseActionResult(bridge.shareText(title, text))
+}
+
+export function shareBackup(): BridgeActionResult {
+  const bridge = getBridge()
+  if (!bridge?.shareBackup) return { success: false, error: 'Bridge not available' }
+  return parseActionResult(bridge.shareBackup())
+}
+
+export function getStorageSummary(): { success: boolean; panels: number; folders: number; error?: string } {
+  const bridge = getBridge()
+  if (!bridge?.getStorageSummary) return { success: false, panels: 0, folders: 0, error: 'Bridge not available' }
+  try {
+    const data = JSON.parse(bridge.getStorageSummary()) as { success?: boolean; panels?: number; folders?: number; error?: string }
+    return { success: !!data.success, panels: data.panels ?? 0, folders: data.folders ?? 0, error: data.error }
+  } catch {
+    return { success: false, panels: 0, folders: 0, error: 'پاسخ نامعتبر از برنامه میزبان' }
+  }
+}
+
+export function getActivityLogs(): { success: boolean; logs: BridgeActivityLog[]; error?: string } {
+  const bridge = getBridge()
+  if (!bridge?.getActivityLogs) return { success: false, logs: [], error: 'Bridge not available' }
+  try {
+    const data = JSON.parse(bridge.getActivityLogs()) as { success?: boolean; logs?: BridgeActivityLog[]; error?: string }
+    return { success: !!data.success, logs: data.logs ?? [], error: data.error }
+  } catch {
+    return { success: false, logs: [], error: 'پاسخ نامعتبر از برنامه میزبان' }
+  }
+}
+
 /** Result of getSerialNumber: either serial number or error. */
 export type GetSerialNumberResult =
   | { serialNumber: string; error?: undefined }
@@ -440,4 +591,71 @@ export function getSerialNumber(
     const message = e instanceof Error ? e.message : String(e)
     return { serialNumber: null, error: message }
   }
+}
+
+function panelPayloadForWifi(panel: {
+  ip?: string | null
+  port?: number | string | null
+  serialNumber?: string | null
+  codeUD?: string | null
+}): string {
+  return JSON.stringify({
+    ip: panel.ip ?? '',
+    port: panel.port ?? '',
+    serialNumber: panel.serialNumber ?? '',
+    codeUD: panel.codeUD ?? '',
+  })
+}
+
+function parseWifiResult(raw: string): WifiPanelBridgeResult {
+  try {
+    const data = JSON.parse(raw) as WifiPanelBridgeResult
+    return {
+      success: !!data.success,
+      request: data.request,
+      response: data.response,
+      chunks: Array.isArray(data.chunks) ? data.chunks : [],
+      chunkCount: data.chunkCount ?? 0,
+      error: data.error,
+    }
+  } catch {
+    return { success: false, error: 'پاسخ نامعتبر از برنامه میزبان' }
+  }
+}
+
+export function wifiSendData(
+  panel: { ip?: string | null; port?: number | string | null; serialNumber?: string | null; codeUD?: string | null },
+  code: string | number,
+  tabCode?: string | number | null
+): WifiPanelBridgeResult {
+  const bridge = getBridge()
+  if (!bridge?.wifiSendData) return { success: false, error: 'Bridge not available' }
+  return parseWifiResult(bridge.wifiSendData(panelPayloadForWifi(panel), String(code), tabCode == null ? '' : String(tabCode)))
+}
+
+export function wifiReceiveData(
+  panel: { ip?: string | null; port?: number | string | null; serialNumber?: string | null; codeUD?: string | null },
+  code: string | number,
+  tabCode?: string | number | null,
+  count?: string | number | null
+): WifiPanelBridgeResult {
+  const bridge = getBridge()
+  if (!bridge?.wifiReceiveData) return { success: false, error: 'Bridge not available' }
+  return parseWifiResult(
+    bridge.wifiReceiveData(
+      panelPayloadForWifi(panel),
+      String(code),
+      tabCode == null ? '' : String(tabCode),
+      count == null ? '' : String(count),
+    ),
+  )
+}
+
+export function wifiSendCommand(
+  panel: { ip?: string | null; port?: number | string | null; serialNumber?: string | null; codeUD?: string | null },
+  message: string
+): WifiPanelBridgeResult {
+  const bridge = getBridge()
+  if (!bridge?.wifiSendCommand) return { success: false, error: 'Bridge not available' }
+  return parseWifiResult(bridge.wifiSendCommand(panelPayloadForWifi(panel), message))
 }

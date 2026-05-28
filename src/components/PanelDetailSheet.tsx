@@ -6,6 +6,8 @@ import {
   IoGlobeOutline,
   IoWifi,
   IoFolderOutline,
+  IoPencilOutline,
+  IoTrashOutline,
 } from 'react-icons/io5'
 
 export type ConnectionWay = 'sms' | 'internet' | 'wifi'
@@ -14,8 +16,11 @@ export interface PanelDetail {
   id: string
   name: string
   ip: string
+  port?: number | null
   phone: string
   folderId?: number | null
+  serialNumber?: string | null
+  codeUD?: string | null
   /** Last alarm status from panel: ARM / DISARM; null when never connected. */
   lastStatus?: 'ARM' | 'DISARM' | null
 }
@@ -53,6 +58,8 @@ export function PanelDetailSheet({
   panel,
   onClose,
   onConnect,
+  onEdit,
+  onDelete,
   folders = [],
   onSetFolder,
 }: PanelDetailSheetProps) {
@@ -85,7 +92,7 @@ export function PanelDetailSheet({
             role="dialog"
             aria-modal="true"
             aria-labelledby="panel-detail-title"
-            className="fixed inset-x-0 bottom-0 z-40 flex max-h-[90vh] flex-col rounded-t-3xl border-t border-(--app-border) bg-(--surface-light) shadow-2xl"
+            className="fixed inset-x-0 bottom-0 z-40 mx-auto flex w-full max-w-[42rem] flex-col rounded-t-3xl border-t border-(--app-border) bg-(--surface-light) shadow-2xl max-h-[90vh]"
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
@@ -113,7 +120,7 @@ export function PanelDetailSheet({
               <div className="mx-auto h-1 w-12 rounded-full bg-(--app-border)" aria-hidden />
             </div>
 
-            <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pb-8 pt-2">
+            <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pb-[calc(2rem+env(safe-area-inset-bottom,0px))] pt-2">
               {/* وضعیت آخر پنل (مسلح / غیرمسلح) */}
               <section className="w-full">
                 <h3 className="mb-2 text-sm font-medium text-(--teal-tertiary)">وضعیت پنل</h3>
@@ -165,6 +172,31 @@ export function PanelDetailSheet({
                         بستن
                       </button>
                     </div>
+                  )}
+                </section>
+              )}
+
+              {(onEdit || onDelete) && (
+                <section className="grid w-full grid-cols-2 gap-2">
+                  {onEdit && (
+                    <button
+                      type="button"
+                      onClick={() => onEdit(panel)}
+                      className="flex h-12 items-center justify-center gap-2 rounded-xl border border-(--teal-primary)/35 bg-(--white) font-medium text-(--teal-primary)"
+                    >
+                      <IoPencilOutline className="h-5 w-5" aria-hidden />
+                      ویرایش
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button
+                      type="button"
+                      onClick={() => onDelete(panel)}
+                      className="flex h-12 items-center justify-center gap-2 rounded-xl border border-red-500/35 bg-(--white) font-medium text-red-600"
+                    >
+                      <IoTrashOutline className="h-5 w-5" aria-hidden />
+                      حذف
+                    </button>
                   )}
                 </section>
               )}

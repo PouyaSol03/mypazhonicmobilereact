@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { useCallback, useState, type ReactNode } from 'react'
 import {
   getLatestUser,
   getStoredToken,
@@ -7,25 +7,13 @@ import {
 } from '../utils/androidBridge'
 import type { UserInfo } from '../types/auth'
 import { toUserInfo } from '../types/auth'
+import { AuthContext, type AuthContextValue } from './authContextState'
 
-type AuthState = {
-  token: string | null
-  user: UserInfo | null
-  loading: boolean
-}
-
-type AuthContextValue = AuthState & {
-  refreshUser: () => void
-  setSession: (token: string, user?: Record<string, unknown> | null) => void
-  logout: () => void
-}
-
-const AuthContext = createContext<AuthContextValue | null>(null)
-
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => getStoredToken())
-  const [user, setUser] = useState<UserInfo | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState<UserInfo | null>(() =>
+    getStoredToken() ? toUserInfo(getLatestUser().user ?? null) : null
+  )
 
   const refreshUser = useCallback(() => {
     if (!token) {
@@ -35,16 +23,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { user: u } = getLatestUser()
     setUser(toUserInfo(u ?? null))
   }, [token])
-
-  useEffect(() => {
-    if (!token) {
-      setUser(null)
-      setLoading(false)
-      return
-    }
-    refreshUser()
-    setLoading(false)
-  }, [token, refreshUser])
 
   const setSession = useCallback((newToken: string, userPayload?: Record<string, unknown> | null) => {
     setStoredToken(newToken)
@@ -62,22 +40,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value: AuthContextValue = {
     token,
     user,
-    loading,
+    loading: false,
     refreshUser,
     setSession,
     logout,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-}
-
-export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider')
-  return ctx
-}
-
-/** Optional hook: returns auth context or null when outside provider (e.g. tests). */
-export function useAuthOptional(): AuthContextValue | null {
-  return useContext(AuthContext)
 }

@@ -7,44 +7,27 @@ const toastFontFamily = '"Vazirmatn", Inter, system-ui, sans-serif'
 
 function App() {
   return (
-    <div className="w-full h-full">
+    <div className="h-full w-full">
       <Toaster
         position="top-center"
+        gutter={10}
         containerClassName="pazhonic-toast"
         containerStyle={{
           direction: 'rtl',
           fontFamily: toastFontFamily,
+          top: 'calc(0.75rem + env(safe-area-inset-top, 0px))',
+          pointerEvents: 'none',
         }}
         toastOptions={{
-          style: {
-            fontFamily: toastFontFamily,
-            direction: 'rtl',
-          },
+          duration: 3800,
         }}
       />
-      <div className="relative h-full w-full overflow-hidden bg-white md:hidden">
-        {/* <div className="pointer-events-none absolute inset-0" aria-hidden="true">
-          <div className="iphone-bg-element iphone-bg-cyan-1" />
-          <div className="iphone-bg-element iphone-bg-cyan-2" />
-          <div className="iphone-bg-element iphone-bg-blue-1" />
-          <div className="iphone-bg-element iphone-bg-blue-2" />
-        </div> */}
-
-        <div className="relative z-10 h-full w-full">
+      <div className="relative h-full min-h-full h-dvh min-h-[100svh] w-full overflow-hidden bg-(--background-light)">
+        <div className="relative z-10 flex h-full w-full justify-center">
           <AuthProvider>
             <RouterProvider router={router} />
           </AuthProvider>
         </div>
-      </div>
-
-      <div className="hidden min-h-dvh flex-col items-center justify-center bg-(--background-light) bg-linear-to-b from-(--app-gradient-start) to-(--app-gradient-end) px-6 text-center text-(--black) md:flex">
-        <p className="text-2xl font-semibold text-(--teal-tertiary)">
-          Mobile App Only
-        </p>
-        <p className="mt-3 max-w-md text-sm text-(--teal-tertiary)/80">
-          This project is designed for mobile screen sizes. Open it in a mobile
-          viewport to continue.
-        </p>
       </div>
     </div>
   )
